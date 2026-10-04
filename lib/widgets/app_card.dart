@@ -76,7 +76,14 @@ class _PressableState extends State<Pressable> {
 
 /// Oq kartochka (radius 16–24, soyasiz).
 class AppCard extends StatelessWidget {
-  const AppCard({super.key, required this.child, this.padding = const EdgeInsets.all(16), this.radius = 18, this.onTap, this.color});
+  const AppCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.radius = 18,
+    this.onTap,
+    this.color,
+  });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -100,7 +107,15 @@ class AppCard extends StatelessWidget {
 
 /// Rangli fonli ikonka qutisi (36×36, radius 11).
 class IconBox extends StatelessWidget {
-  const IconBox(this.icon, {super.key, required this.color, this.size = 36, this.iconSize = 18, this.radius = 11, this.child});
+  const IconBox(
+    this.icon, {
+    super.key,
+    required this.color,
+    this.size = 36,
+    this.iconSize = 18,
+    this.radius = 11,
+    this.child,
+  });
 
   final AppIcons? icon;
   final Color color;
@@ -123,7 +138,16 @@ class IconBox extends StatelessWidget {
 
 /// Sarlavhadagi 42×42 kvadrat tugma.
 class SquareButton extends StatelessWidget {
-  const SquareButton(this.icon, {super.key, required this.onTap, required this.label, this.size = 42, this.color, this.iconColor, this.child});
+  const SquareButton(
+    this.icon, {
+    super.key,
+    required this.onTap,
+    required this.label,
+    this.size = 42,
+    this.color,
+    this.iconColor,
+    this.child,
+  });
 
   final AppIcons icon;
   final VoidCallback? onTap;
@@ -147,8 +171,8 @@ class SquareButton extends StatelessWidget {
           width: size,
           height: size,
           child: Center(
-            child: child ??
-                AppIcon(icon, size: 20, color: onTap == null ? c.sec.withAlpha(0x80) : (iconColor ?? c.ink)),
+            child:
+                child ?? AppIcon(icon, size: 20, color: onTap == null ? c.sec.withAlpha(0x80) : (iconColor ?? c.ink)),
           ),
         ),
       ),
@@ -229,10 +253,7 @@ class BigButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (icon != null) ...[
-                AppIcon(icon!, size: 19, color: fg, stroke: 2.1),
-                const SizedBox(width: 8),
-              ],
+              if (icon != null) ...[AppIcon(icon!, size: 19, color: fg, stroke: 2.1), const SizedBox(width: 8)],
               Flexible(
                 child: Text(
                   label,
@@ -298,7 +319,9 @@ class RowItem extends StatelessWidget {
     final c = context.c;
     final content = Container(
       constraints: const BoxConstraints(minHeight: 60),
-      decoration: BoxDecoration(border: divider ? Border(bottom: BorderSide(color: c.line)) : null),
+      decoration: BoxDecoration(
+        border: divider ? Border(bottom: BorderSide(color: c.line)) : null,
+      ),
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
@@ -308,7 +331,10 @@ class RowItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(title, style: T.text(14, w: FontWeight.w600, color: titleColor ?? c.ink)),
+                Text(
+                  title,
+                  style: T.text(14, w: FontWeight.w600, color: titleColor ?? c.ink),
+                ),
                 if (subtitle != null) ...[
                   const SizedBox(height: 2),
                   Text(subtitle!, style: T.text(12, color: c.sec, height: 1.35)),
@@ -337,15 +363,17 @@ class RowGroup extends StatelessWidget {
     final items = <Widget>[];
     for (var i = 0; i < children.length; i++) {
       final r = children[i];
-      items.add(RowItem(
-        title: r.title,
-        subtitle: r.subtitle,
-        leading: r.leading,
-        trailing: r.trailing,
-        onTap: r.onTap,
-        titleColor: r.titleColor,
-        divider: i < children.length - 1,
-      ));
+      items.add(
+        RowItem(
+          title: r.title,
+          subtitle: r.subtitle,
+          leading: r.leading,
+          trailing: r.trailing,
+          onTap: r.onTap,
+          titleColor: r.titleColor,
+          divider: i < children.length - 1,
+        ),
+      );
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
@@ -374,10 +402,12 @@ class SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
-        child: Text(text.toUpperCase(),
-            style: T.text(12, w: FontWeight.w700, color: context.c.sec, spacing: 0.5)),
-      );
+    padding: const EdgeInsets.fromLTRB(4, 6, 4, 0),
+    child: Text(
+      text.toUpperCase(),
+      style: T.text(12, w: FontWeight.w700, color: context.c.sec, spacing: 0.5),
+    ),
+  );
 }
 
 /// Kichik yumaloq belgi: "3-bosqich", "yangi", "qiyin".
@@ -391,13 +421,13 @@ class Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-        decoration: BoxDecoration(
-          color: filled ? context.c.soft(color) : null,
-          borderRadius: BorderRadius.circular(999),
-        ),
-        child: Text(text, style: T.text(size, w: FontWeight.w600, color: color)),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+    decoration: BoxDecoration(color: filled ? context.c.soft(color) : null, borderRadius: BorderRadius.circular(999)),
+    child: Text(
+      text,
+      style: T.text(size, w: FontWeight.w600, color: color),
+    ),
+  );
 }
 
 /// Filtr chipi (bosiladigan).
@@ -419,7 +449,10 @@ class FilterChipX extends StatelessWidget {
         radius: 999,
         color: selected ? c.accent : c.card,
         padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 9),
-        child: Text(label, style: T.text(13, w: FontWeight.w600, color: selected ? c.onAccent : c.ink)),
+        child: Text(
+          label,
+          style: T.text(13, w: FontWeight.w600, color: selected ? c.onAccent : c.ink),
+        ),
       ),
     );
   }
@@ -451,10 +484,7 @@ class AppSwitch extends StatelessWidget {
           width: 46,
           height: 28,
           padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(
-            color: value ? c.accent : c.line,
-            borderRadius: BorderRadius.circular(999),
-          ),
+          decoration: BoxDecoration(color: value ? c.accent : c.line, borderRadius: BorderRadius.circular(999)),
           child: AnimatedAlign(
             duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
@@ -531,7 +561,12 @@ class StatTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: T.text(11, color: c.sec), maxLines: 1, overflow: TextOverflow.ellipsis),
+          Text(
+            label,
+            style: T.text(11, color: c.sec),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
           const SizedBox(height: 3),
           Text(value, style: T.display(19, color: color ?? c.ink)),
         ],
@@ -543,9 +578,11 @@ class StatTile extends StatelessWidget {
 void showToast(BuildContext context, String text, {String? action, VoidCallback? onAction}) {
   final m = ScaffoldMessenger.of(context);
   m.hideCurrentSnackBar();
-  m.showSnackBar(SnackBar(
-    content: Text(text),
-    duration: const Duration(seconds: 3),
-    action: action == null ? null : SnackBarAction(label: action, onPressed: onAction ?? () {}),
-  ));
+  m.showSnackBar(
+    SnackBar(
+      content: Text(text),
+      duration: const Duration(seconds: 3),
+      action: action == null ? null : SnackBarAction(label: action, onPressed: onAction ?? () {}),
+    ),
+  );
 }

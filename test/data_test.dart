@@ -13,8 +13,7 @@ void main() {
   group('Import (TZ 5.6)', () {
     test("`so'z :: tarjima :: sinonim :: misol` formatidagi 100 qator to'g'ri import qilinadi", () {
       final text = [
-        for (var i = 0; i < 100; i++)
-          'word$i :: tarjima$i :: syn$i, other$i :: This is example number $i with word$i.',
+        for (var i = 0; i < 100; i++) 'word$i :: tarjima$i :: syn$i, other$i :: This is example number $i with word$i.',
       ].join('\n');
       final p = parseImport(text, {});
       expect(p.fresh.length, 100);
@@ -60,9 +59,38 @@ void main() {
       expect(p.errors, isEmpty);
     });
 
+    test("So'zlik CSV eksporti qayta import qilinadi", () {
+      final csv = exportCsv([
+        const Word(
+          en: 'compulsory',
+          uz: 'majburiy',
+          synonyms: ['mandatory', 'required'],
+          example: 'It is "compulsory", yes.',
+          tags: ['a'],
+          stage: 3,
+          nextDue: '2026-10-04',
+          createdAt: 0,
+          updatedAt: 0,
+        ),
+      ]);
+      final p = parseImport(csv, {});
+      expect(p.errors, isEmpty);
+      expect(p.fresh.single.en, 'compulsory');
+      expect(p.fresh.single.synonyms, ['mandatory', 'required']);
+      expect(p.fresh.single.example, 'It is "compulsory", yes.');
+    });
+
     test('Anki eksport tab bilan ajratiladi', () {
       final out = exportAnki([
-        const Word(en: 'scarce', uz: 'kam', synonyms: ['rare'], tags: ['ta\'lim'], nextDue: '2026-10-04', createdAt: 0, updatedAt: 0),
+        const Word(
+          en: 'scarce',
+          uz: 'kam',
+          synonyms: ['rare'],
+          tags: ['ta\'lim'],
+          nextDue: '2026-10-04',
+          createdAt: 0,
+          updatedAt: 0,
+        ),
       ]);
       expect(out, contains('scarce\tkam<br><small>rare</small>\tta\'lim'));
     });
@@ -79,12 +107,47 @@ void main() {
 
     Future<void> seed() async {
       final ids = await db.insertWords([
-        const Word(en: 'compulsory', uz: 'majburiy', synonyms: ['mandatory'], example: 'It is compulsory.', tags: ['ta\'lim'], stage: 4, intervalDays: 14, nextDue: '2026-10-18', lastSeen: '2026-10-04', correctCount: 5, wrongCount: 1, streakCorrect: 3, createdAt: 1, updatedAt: 2),
+        const Word(
+          en: 'compulsory',
+          uz: 'majburiy',
+          synonyms: ['mandatory'],
+          example: 'It is compulsory.',
+          tags: ['ta\'lim'],
+          stage: 4,
+          intervalDays: 14,
+          nextDue: '2026-10-18',
+          lastSeen: '2026-10-04',
+          correctCount: 5,
+          wrongCount: 1,
+          streakCorrect: 3,
+          createdAt: 1,
+          updatedAt: 2,
+        ),
         const Word(en: 'scarce', uz: 'kam', stage: 0, nextDue: '2026-10-04', createdAt: 3, updatedAt: 3),
-        const Word(en: 'abundant', uz: 'mo\'l', stage: 6, intervalDays: 90, nextDue: '2027-01-02', lastSeen: '2026-10-04', difficult: true, wrongCount: 3, createdAt: 4, updatedAt: 4),
+        const Word(
+          en: 'abundant',
+          uz: 'mo\'l',
+          stage: 6,
+          intervalDays: 90,
+          nextDue: '2027-01-02',
+          lastSeen: '2026-10-04',
+          difficult: true,
+          wrongCount: 3,
+          createdAt: 4,
+          updatedAt: 4,
+        ),
       ]);
       await db.recordAnswer(
-        log: ReviewLog(wordId: ids[0], at: 10, day: '2026-10-04', mode: ReviewMode.produce, result: true, answerText: 'compulsory', stageBefore: 3, stageAfter: 4),
+        log: ReviewLog(
+          wordId: ids[0],
+          at: 10,
+          day: '2026-10-04',
+          mode: ReviewMode.produce,
+          result: true,
+          answerText: 'compulsory',
+          stageBefore: 3,
+          stageAfter: 4,
+        ),
         word: (await db.wordById(ids[0]))!,
         stat: const DayStat(day: '2026-10-04', reviewed: 1, correct: 1),
       );
@@ -155,12 +218,24 @@ void main() {
       final w = (await db.allWords())[1];
       final next = applyAnswer(w, correct: true, today: '2026-10-04', nowMillis: 99);
       final logId = await db.recordAnswer(
-        log: ReviewLog(wordId: w.id!, at: 99, day: '2026-10-04', mode: ReviewMode.recognize, result: true, stageBefore: 0, stageAfter: 1),
+        log: ReviewLog(
+          wordId: w.id!,
+          at: 99,
+          day: '2026-10-04',
+          mode: ReviewMode.recognize,
+          result: true,
+          stageBefore: 0,
+          stageAfter: 1,
+        ),
         word: next,
         stat: const DayStat(day: '2026-10-04', reviewed: 2, correct: 2, newLearned: 1),
       );
       expect((await db.wordById(w.id!))!.stage, 1);
-      await db.undoAnswer(logId: logId, previous: w, stat: const DayStat(day: '2026-10-04', reviewed: 1, correct: 1));
+      await db.undoAnswer(
+        logId: logId,
+        previous: w,
+        stat: const DayStat(day: '2026-10-04', reviewed: 1, correct: 1),
+      );
       final back = (await db.wordById(w.id!))!;
       expect(back.stage, 0);
       expect(back.lastSeen, isNull);

@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -14,7 +17,12 @@ class Tts {
   /// Hozir o'qilayotgan matn (tugmalarni belgilash uchun).
   final ValueNotifier<String?> speaking = ValueNotifier(null);
 
+  bool _voiceMissing = false;
+
   bool get available => _available;
+
+  /// Telefon inglizcha ovoz yo'qligini aytdi (baribir o'qishga urinib ko'riladi).
+  bool get voiceMissing => _voiceMissing;
 
   Future<void> init() async {
     if (_ready) return;
@@ -30,7 +38,11 @@ class Tts {
           break;
         }
       }
-      _available = ok;
+      // Ba'zi dvigatellar mavjud ovozni ham "yo'q" deb qaytaradi — shuning
+      // uchun o'qishni o'chirmaymiz, faqat foydalanuvchiga ogohlantirish beramiz.
+      if (!ok) await _tts.setLanguage('en-US');
+      _voiceMissing = !ok;
+      _available = true;
       await _tts.setPitch(1.0);
       _tts.setCompletionHandler(() => speaking.value = null);
       _tts.setCancelHandler(() => speaking.value = null);
@@ -63,6 +75,25 @@ class Tts {
       debugPrint('TTS plagini topilmadi: $e');
     } finally {
       speaking.value = null;
+    }
+  }
+
+  /// Telefonning "Matnni nutqqa aylantirish" sozlamasini ochadi
+  /// (inglizcha ovoz paketini yuklab olish uchun).
+  Future<bool> openSystemSettings() async {
+    if (!Platform.isAndroid) return false;
+    try {
+      await const AndroidIntent(action: 'com.android.settings.TTS_SETTINGS', flags: [0x10000000]).launch();
+      return true;
+    } on PlatformException catch (e) {
+      debugPrint('TTS sozlamasi ochilmadi: $e');
+      try {
+        await const AndroidIntent(action: 'android.settings.SETTINGS', flags: [0x10000000]).launch();
+        return true;
+      } on PlatformException catch (e2) {
+        debugPrint('Sozlamalar ochilmadi: $e2');
+        return false;
+      }
     }
   }
 

@@ -24,13 +24,39 @@ void main() {
     final path = p.join(dir.path, 'sozlik.db');
     final f = databaseFactoryFfiNoIsolate;
     // v1 sxemasidagi baza (audio ustunisiz).
-    final old = await f.openDatabase(path, options: OpenDatabaseOptions(version: 1, onCreate: (db, _) async {
-      await db.execute('CREATE TABLE meta (id INTEGER PRIMARY KEY, schemaVersion INTEGER, createdAt INTEGER, lastOpenedDay TEXT)');
-      await db.execute("CREATE TABLE settings (id INTEGER PRIMARY KEY, dailyNew INTEGER DEFAULT 30, dailyReview INTEGER DEFAULT 60, modeRecognize INTEGER DEFAULT 1, modeProduce INTEGER DEFAULT 1, modeSynonym INTEGER DEFAULT 1, modeAudio INTEGER DEFAULT 1, reminderOn INTEGER DEFAULT 1, reminderTime TEXT DEFAULT '20:00', dayStartHour INTEGER DEFAULT 4, theme TEXT DEFAULT 'system', lastBackupAt INTEGER)");
-      await db.execute("CREATE TABLE words (id INTEGER PRIMARY KEY AUTOINCREMENT, en TEXT, uz TEXT, synonyms TEXT, example TEXT, exampleUz TEXT, pos TEXT, tags TEXT DEFAULT '[]', stage INTEGER, intervalDays INTEGER, nextDue TEXT, lastSeen TEXT, correctCount INTEGER, wrongCount INTEGER, streakCorrect INTEGER, difficult INTEGER, status TEXT, createdAt INTEGER, updatedAt INTEGER)");
-      await db.insert('meta', {'id': 1, 'schemaVersion': 1, 'createdAt': 0});
-      await db.insert('words', {'en': 'scarce', 'uz': 'kam', 'tags': '[]', 'stage': 4, 'intervalDays': 14, 'nextDue': '2026-10-18', 'correctCount': 4, 'wrongCount': 0, 'streakCorrect': 4, 'difficult': 0, 'status': 'active', 'createdAt': 1, 'updatedAt': 1});
-    }));
+    final old = await f.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 1,
+        onCreate: (db, _) async {
+          await db.execute(
+            'CREATE TABLE meta (id INTEGER PRIMARY KEY, schemaVersion INTEGER, createdAt INTEGER, lastOpenedDay TEXT)',
+          );
+          await db.execute(
+            "CREATE TABLE settings (id INTEGER PRIMARY KEY, dailyNew INTEGER DEFAULT 30, dailyReview INTEGER DEFAULT 60, modeRecognize INTEGER DEFAULT 1, modeProduce INTEGER DEFAULT 1, modeSynonym INTEGER DEFAULT 1, modeAudio INTEGER DEFAULT 1, reminderOn INTEGER DEFAULT 1, reminderTime TEXT DEFAULT '20:00', dayStartHour INTEGER DEFAULT 4, theme TEXT DEFAULT 'system', lastBackupAt INTEGER)",
+          );
+          await db.execute(
+            "CREATE TABLE words (id INTEGER PRIMARY KEY AUTOINCREMENT, en TEXT, uz TEXT, synonyms TEXT, example TEXT, exampleUz TEXT, pos TEXT, tags TEXT DEFAULT '[]', stage INTEGER, intervalDays INTEGER, nextDue TEXT, lastSeen TEXT, correctCount INTEGER, wrongCount INTEGER, streakCorrect INTEGER, difficult INTEGER, status TEXT, createdAt INTEGER, updatedAt INTEGER)",
+          );
+          await db.insert('meta', {'id': 1, 'schemaVersion': 1, 'createdAt': 0});
+          await db.insert('words', {
+            'en': 'scarce',
+            'uz': 'kam',
+            'tags': '[]',
+            'stage': 4,
+            'intervalDays': 14,
+            'nextDue': '2026-10-18',
+            'correctCount': 4,
+            'wrongCount': 0,
+            'streakCorrect': 4,
+            'difficult': 0,
+            'status': 'active',
+            'createdAt': 1,
+            'updatedAt': 1,
+          });
+        },
+      ),
+    );
     await old.close();
 
     final db = await AppDatabase.open(path: path, factory: f);
@@ -49,7 +75,9 @@ void main() {
 
   test("Audio maydonisiz eski zaxira nusxa ham qabul qilinadi", () async {
     final db = await AppDatabase.open(path: inMemoryDatabasePath, factory: databaseFactoryFfiNoIsolate);
-    await db.insertWord(const Word(en: 'vivid', uz: 'yorqin', audio: 'vivid_1.mp3', nextDue: '2026-10-04', createdAt: 0, updatedAt: 0));
+    await db.insertWord(
+      const Word(en: 'vivid', uz: 'yorqin', audio: 'vivid_1.mp3', nextDue: '2026-10-04', createdAt: 0, updatedAt: 0),
+    );
     final json = BackupCodec.encode(await db.dumpTables(), schemaVersion: AppDatabase.schemaVersion);
     final root = jsonDecode(json) as Map<String, dynamic>;
     expect((root['tables']['words'] as List).single['audio'], 'vivid_1.mp3');

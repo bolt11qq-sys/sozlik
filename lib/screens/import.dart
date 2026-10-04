@@ -63,7 +63,7 @@ class _ImportScreenState extends State<ImportScreen> {
 
   Future<void> _fromFile() async {
     try {
-      final t = await BackupFiles.pickText(extensions: ['csv', 'txt', 'tsv']);
+      final t = await BackupFiles.pickText();
       if (t == null) return;
       _text.text = t.replaceFirst('﻿', '');
       _check();
@@ -143,16 +143,24 @@ class _ImportScreenState extends State<ImportScreen> {
                           decoration: InputDecoration(
                             isCollapsed: true,
                             border: InputBorder.none,
-                            hintText: 'compulsory :: majburiy :: mandatory, required :: Education is compulsory.\n'
+                            hintText:
+                                'compulsory :: majburiy :: mandatory, required :: Education is compulsory.\n'
                                 'sustainable :: barqaror :: lasting :: We need sustainable growth.\n'
                                 'reluctant :: istamay :: unwilling :: He was reluctant to answer.',
                             hintMaxLines: 6,
-                            hintStyle: TextStyle(fontFamily: 'monospace', fontSize: 12.5, height: 1.75, color: c.sec.withAlpha(0x99)),
+                            hintStyle: TextStyle(
+                              fontFamily: 'monospace',
+                              fontSize: 12.5,
+                              height: 1.75,
+                              color: c.sec.withAlpha(0x99),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 10),
-                        Text("Har qator: so'z :: tarjima :: sinonim :: misol  ·  CSV: en,uz,synonyms,example",
-                            style: T.text(11, color: c.sec, height: 1.45)),
+                        Text(
+                          "Har qator: so'z :: tarjima :: sinonim :: misol  ·  CSV: en,uz,synonyms,example",
+                          style: T.text(11, color: c.sec, height: 1.45),
+                        ),
                       ],
                     ),
                   ),
@@ -161,7 +169,11 @@ class _ImportScreenState extends State<ImportScreen> {
                     children: [
                       Expanded(
                         child: BigButton(
-                            label: 'Fayldan (CSV)', icon: AppIcons.download, kind: ButtonKind.secondary, onTap: _fromFile),
+                          label: 'Fayldan (CSV)',
+                          icon: AppIcons.download,
+                          kind: ButtonKind.secondary,
+                          onTap: _fromFile,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -186,10 +198,12 @@ class _ImportScreenState extends State<ImportScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('Talaffuz fayllarini yuklash', style: T.text(14, w: FontWeight.w600, color: c.ink)),
+                              Text(
+                                'Talaffuz fayllarini yuklash',
+                                style: T.text(14, w: FontWeight.w600, color: c.ink),
+                              ),
                               const SizedBox(height: 2),
-                              Text("Fayl nomi = so'z: compulsory.mp3, carry_out.m4a",
-                                  style: T.text(12, color: c.sec)),
+                              Text("Fayl nomi = so'z: compulsory.mp3, carry_out.m4a", style: T.text(12, color: c.sec)),
                             ],
                           ),
                         ),
@@ -200,7 +214,10 @@ class _ImportScreenState extends State<ImportScreen> {
                   if (p != null) ...[
                     const SizedBox(height: 16),
                     RowGroup(
-                      header: Text('Natija', style: T.text(14, w: FontWeight.w700, color: c.ink)),
+                      header: Text(
+                        'Natija',
+                        style: T.text(14, w: FontWeight.w700, color: c.ink),
+                      ),
                       children: [
                         RowItem(
                           leading: IconBox(AppIcons.check, color: c.accent),
@@ -209,8 +226,10 @@ class _ImportScreenState extends State<ImportScreen> {
                           trailing: _Count(p.fresh.length, c.accent),
                           onTap: p.fresh.isEmpty
                               ? null
-                              : () => _showList("Yangi so'zlar",
-                                  [for (final e in p.fresh) (e.en, [e.uz, if (e.example != null) e.example!].join(' · '))]),
+                              : () => _showList("Yangi so'zlar", [
+                                  for (final e in p.fresh)
+                                    (e.en, [e.uz, if (e.example != null) e.example!].join(' · ')),
+                                ]),
                         ),
                         RowItem(
                           leading: IconBox(AppIcons.layers, color: c.sec),
@@ -219,7 +238,9 @@ class _ImportScreenState extends State<ImportScreen> {
                           trailing: _Count(p.duplicates.length, c.sec),
                           onTap: p.duplicates.isEmpty
                               ? null
-                              : () => _showList('Dublikatlar', [for (final e in p.duplicates) (e.en, '${e.lineNo}-qator')]),
+                              : () => _showList('Dublikatlar', [
+                                  for (final e in p.duplicates) (e.en, '${e.lineNo}-qator'),
+                                ]),
                         ),
                         RowItem(
                           leading: IconBox(AppIcons.close, color: c.red),
@@ -228,8 +249,9 @@ class _ImportScreenState extends State<ImportScreen> {
                           trailing: _Count(p.errors.length, c.red),
                           onTap: p.errors.isEmpty
                               ? null
-                              : () => _showList('Xato qatorlar',
-                                  [for (final e in p.errors) ('${e.lineNo}-qator: ${e.reason}', e.line)]),
+                              : () => _showList('Xato qatorlar', [
+                                  for (final e in p.errors) ('${e.lineNo}-qator: ${e.reason}', e.line),
+                                ]),
                         ),
                       ],
                     ),
@@ -247,7 +269,10 @@ class _ImportScreenState extends State<ImportScreen> {
                           hintText: 'Multilevel, oktabr',
                           hintStyle: T.text(14, color: c.sec.withAlpha(0x99)),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
                         ),
                       ),
                     ),
@@ -255,13 +280,15 @@ class _ImportScreenState extends State<ImportScreen> {
                 ],
               ),
             ),
-            BottomBar(children: [
-              BigButton(label: 'Bekor qilish', kind: ButtonKind.secondary, onTap: () => Navigator.of(context).pop()),
-              BigButton(
-                label: p == null ? "Qo'shish" : "${p.fresh.length} ta so'zni qo'shish",
-                onTap: p == null || p.fresh.isEmpty || _busy ? null : _confirm,
-              ),
-            ]),
+            BottomBar(
+              children: [
+                BigButton(label: 'Bekor qilish', kind: ButtonKind.secondary, onTap: () => Navigator.of(context).pop()),
+                BigButton(
+                  label: p == null ? "Qo'shish" : "${p.fresh.length} ta so'zni qo'shish",
+                  onTap: p == null || p.fresh.isEmpty || _busy ? null : _confirm,
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -276,5 +303,8 @@ class _Count extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Text('$n', style: T.text(15, w: FontWeight.w700, color: color));
+  Widget build(BuildContext context) => Text(
+    '$n',
+    style: T.text(15, w: FontWeight.w700, color: color),
+  );
 }

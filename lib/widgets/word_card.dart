@@ -10,18 +10,18 @@ import 'app_card.dart';
 import 'app_icon.dart';
 
 AppIcons modeIcon(ReviewMode m) => switch (m) {
-      ReviewMode.recognize => AppIcons.book,
-      ReviewMode.produce => AppIcons.pencil,
-      ReviewMode.synonym => AppIcons.swap,
-      ReviewMode.audio => AppIcons.ear,
-    };
+  ReviewMode.recognize => AppIcons.book,
+  ReviewMode.produce => AppIcons.pencil,
+  ReviewMode.synonym => AppIcons.swap,
+  ReviewMode.audio => AppIcons.ear,
+};
 
 Color modeColor(AppColors c, ReviewMode m) => switch (m) {
-      ReviewMode.recognize => c.recognize,
-      ReviewMode.produce => c.produce,
-      ReviewMode.synonym => c.synonym,
-      ReviewMode.audio => c.audio,
-    };
+  ReviewMode.recognize => c.recognize,
+  ReviewMode.produce => c.produce,
+  ReviewMode.synonym => c.synonym,
+  ReviewMode.audio => c.audio,
+};
 
 /// Keyingi takrorlashgacha qolgan vaqt matni.
 String dueText(String nextDue, String today) {
@@ -72,9 +72,8 @@ class SpeakButton extends StatelessWidget {
       builder: (_, now, _) => IconButton(
         tooltip: own ? 'Talaffuz (sizning faylingiz)' : 'Tinglash',
         visualDensity: VisualDensity.compact,
-        onPressed: () => word != null
-            ? WordAudio.instance.playWord(word!, slow: slow)
-            : Tts.instance.speak(text, slow: slow),
+        onPressed: () =>
+            word != null ? WordAudio.instance.playWord(word!, slow: slow) : Tts.instance.speak(text, slow: slow),
         icon: AppIcon(AppIcons.speaker, size: size, color: now == key ? c.accent : (own ? c.ink : c.sec)),
       ),
     );
@@ -82,10 +81,22 @@ class SpeakButton extends StatelessWidget {
 }
 
 class WordRow extends StatelessWidget {
-  const WordRow({super.key, required this.word, this.onTap, this.divider = true, this.highlight = ''});
+  const WordRow({
+    super.key,
+    required this.word,
+    this.onTap,
+    this.onLongPress,
+    this.divider = true,
+    this.highlight = '',
+    this.selected,
+  });
 
   final Word word;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
+
+  /// Tanlash rejimida: `true`/`false`; oddiy holatda — `null`.
+  final bool? selected;
   final bool divider;
   final String highlight;
 
@@ -94,9 +105,12 @@ class WordRow extends StatelessWidget {
     final c = context.c;
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 9),
-        decoration: BoxDecoration(border: divider ? Border(bottom: BorderSide(color: c.line)) : null),
+        decoration: BoxDecoration(
+          border: divider ? Border(bottom: BorderSide(color: c.line)) : null,
+        ),
         child: Row(
           children: [
             Expanded(
@@ -105,14 +119,36 @@ class WordRow extends StatelessWidget {
                 children: [
                   _Highlighted(word.en, highlight, T.text(15, w: FontWeight.w600, color: c.ink), c.accent),
                   const SizedBox(height: 3),
-                  Text(word.uz,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: T.text(12, color: c.sec)),
+                  Text(
+                    word.uz,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: T.text(12, color: c.sec),
+                  ),
                 ],
               ),
             ),
             const SizedBox(width: 10),
             StageBadge(word),
-            SpeakButton.word(word),
+            if (selected == null)
+              SpeakButton.word(word)
+            else
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 22,
+                  height: 22,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: selected! ? c.accent : Colors.transparent,
+                    border: Border.all(color: selected! ? c.accent : c.dashed, width: 1.6),
+                  ),
+                  child: selected!
+                      ? Center(child: AppIcon(AppIcons.check, size: 13, color: c.onAccent, stroke: 3))
+                      : null,
+                ),
+              ),
           ],
         ),
       ),
@@ -134,11 +170,17 @@ class _Highlighted extends StatelessWidget {
     final i = q.isEmpty ? -1 : text.toLowerCase().indexOf(q);
     if (i < 0) return Text(text, style: style, maxLines: 1, overflow: TextOverflow.ellipsis);
     return Text.rich(
-      TextSpan(style: style, children: [
-        TextSpan(text: text.substring(0, i)),
-        TextSpan(text: text.substring(i, i + q.length), style: TextStyle(color: color)),
-        TextSpan(text: text.substring(i + q.length)),
-      ]),
+      TextSpan(
+        style: style,
+        children: [
+          TextSpan(text: text.substring(0, i)),
+          TextSpan(
+            text: text.substring(i, i + q.length),
+            style: TextStyle(color: color),
+          ),
+          TextSpan(text: text.substring(i + q.length)),
+        ],
+      ),
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
     );
@@ -159,10 +201,18 @@ class ExampleText extends StatelessWidget {
     final base = style ?? T.text(14, color: c.ink, height: 1.55);
     final m = maskExample(example, word);
     if (m == null) return Text(example, style: base);
-    return Text.rich(TextSpan(style: base, children: [
-      TextSpan(text: m.before),
-      TextSpan(text: m.hidden, style: const TextStyle(fontWeight: FontWeight.w700)),
-      TextSpan(text: m.after),
-    ]));
+    return Text.rich(
+      TextSpan(
+        style: base,
+        children: [
+          TextSpan(text: m.before),
+          TextSpan(
+            text: m.hidden,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          TextSpan(text: m.after),
+        ],
+      ),
+    );
   }
 }

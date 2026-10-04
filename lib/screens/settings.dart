@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -7,6 +9,7 @@ import '../models/settings.dart';
 import '../services/backup.dart';
 import '../db/database.dart';
 import '../services/notifier.dart';
+import '../services/tts.dart';
 import '../srs/scheduler.dart';
 import '../theme.dart';
 import '../widgets/app_card.dart';
@@ -16,8 +19,18 @@ import 'audio_bulk.dart';
 import 'import.dart';
 
 const kMonths = [
-  'yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun',
-  'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr',
+  'yanvar',
+  'fevral',
+  'mart',
+  'aprel',
+  'may',
+  'iyun',
+  'iyul',
+  'avgust',
+  'sentabr',
+  'oktabr',
+  'noyabr',
+  'dekabr',
 ];
 
 String formatMoment(int utcMillis) {
@@ -49,13 +62,16 @@ class SettingsScreen extends StatelessWidget {
             final c = context.c;
             final s = st.value;
             Widget chevron(String v) => Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(v, style: T.text(14, w: FontWeight.w700, color: c.ink)),
-                    const SizedBox(width: 4),
-                    AppIcon(AppIcons.chevronRight, size: 16, color: c.sec),
-                  ],
-                );
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  v,
+                  style: T.text(14, w: FontWeight.w700, color: c.ink),
+                ),
+                const SizedBox(width: 4),
+                AppIcon(AppIcons.chevronRight, size: 16, color: c.sec),
+              ],
+            );
 
             return ListView(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
@@ -64,140 +80,198 @@ class SettingsScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 const SectionLabel('Kunlik chegara'),
                 const SizedBox(height: 12),
-                RowGroup(children: [
-                  RowItem(
-                    leading: IconBox(AppIcons.plus, color: c.accent),
-                    title: "Yangi so'zlar",
-                    subtitle: 'Kuniga eng ko\'pi bilan',
-                    trailing: chevron('${s.dailyNew}'),
-                    onTap: () => _pickNumber(context, "Kunlik yangi so'zlar", s.dailyNew, 0, 100, 5,
-                        (v) => st.update(s.copyWith(dailyNew: v))),
-                  ),
-                  RowItem(
-                    leading: IconBox(AppIcons.brain, color: c.accent),
-                    title: 'Takrorlash',
-                    subtitle: "To'planib qolsa ham oshmaydi",
-                    trailing: chevron('${s.dailyReview}'),
-                    onTap: () => _pickNumber(context, 'Kunlik umumiy chegara', s.dailyReview, 10, 300, 10,
-                        (v) => st.update(s.copyWith(dailyReview: v))),
-                  ),
-                ]),
+                RowGroup(
+                  children: [
+                    RowItem(
+                      leading: IconBox(AppIcons.plus, color: c.accent),
+                      title: "Yangi so'zlar",
+                      subtitle: 'Kuniga eng ko\'pi bilan',
+                      trailing: chevron('${s.dailyNew}'),
+                      onTap: () => _pickNumber(
+                        context,
+                        "Kunlik yangi so'zlar",
+                        s.dailyNew,
+                        0,
+                        100,
+                        5,
+                        (v) => st.update(s.copyWith(dailyNew: v)),
+                      ),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.brain, color: c.accent),
+                      title: 'Takrorlash',
+                      subtitle: "To'planib qolsa ham oshmaydi",
+                      trailing: chevron('${s.dailyReview}'),
+                      onTap: () => _pickNumber(
+                        context,
+                        'Kunlik umumiy chegara',
+                        s.dailyReview,
+                        10,
+                        300,
+                        10,
+                        (v) => st.update(s.copyWith(dailyReview: v)),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 const SectionLabel('Rejimlar'),
                 const SizedBox(height: 12),
-                RowGroup(children: [
-                  for (final m in ReviewMode.values)
-                    RowItem(
-                      leading: IconBox(modeIcon(m), color: modeColor(c, m)),
-                      title: m == ReviewMode.produce ? 'Ishlab chiqarish' : m.label,
-                      subtitle: m.hint,
-                      trailing: AppSwitch(
-                        label: m.label,
-                        value: s.isEnabled(m),
-                        onChanged: (v) {
-                          if (!v && s.enabledModes.length == 1) {
-                            showToast(context, 'Kamida bitta rejim yoqilgan bo\'lishi kerak');
-                            return;
-                          }
-                          st.update(s.withMode(m, v));
-                        },
+                RowGroup(
+                  children: [
+                    for (final m in ReviewMode.values)
+                      RowItem(
+                        leading: IconBox(modeIcon(m), color: modeColor(c, m)),
+                        title: m == ReviewMode.produce ? 'Ishlab chiqarish' : m.label,
+                        subtitle: m.hint,
+                        trailing: AppSwitch(
+                          label: m.label,
+                          value: s.isEnabled(m),
+                          onChanged: (v) {
+                            if (!v && s.enabledModes.length == 1) {
+                              showToast(context, 'Kamida bitta rejim yoqilgan bo\'lishi kerak');
+                              return;
+                            }
+                            st.update(s.withMode(m, v));
+                          },
+                        ),
                       ),
-                    ),
-                ]),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 const SectionLabel('Boshqa'),
                 const SizedBox(height: 12),
-                RowGroup(children: [
-                  RowItem(
-                    leading: IconBox(AppIcons.bell, color: c.amber),
-                    title: 'Kunlik eslatma',
-                    subtitle: s.reminderOn ? 'Har kuni ${s.reminderTime} · vaqtni o\'zgartirish' : "O'chirilgan",
-                    onTap: s.reminderOn ? () => _pickTime(context) : null,
-                    trailing: AppSwitch(
-                      label: 'Eslatma',
-                      value: s.reminderOn,
-                      onChanged: (v) async {
-                        if (v) {
-                          final ok = await Notifier.instance.requestPermission();
-                          if (!ok) {
-                            if (context.mounted) {
-                              showToast(context, 'Bildirishnomaga ruxsat berilmadi. Telefon sozlamalaridan yoqing.');
+                RowGroup(
+                  children: [
+                    RowItem(
+                      leading: IconBox(AppIcons.bell, color: c.amber),
+                      title: 'Kunlik eslatma',
+                      subtitle: s.reminderOn ? 'Har kuni ${s.reminderTime} · vaqtni o\'zgartirish' : "O'chirilgan",
+                      onTap: s.reminderOn ? () => _pickTime(context) : null,
+                      trailing: AppSwitch(
+                        label: 'Eslatma',
+                        value: s.reminderOn,
+                        onChanged: (v) async {
+                          if (v) {
+                            final ok = await Notifier.instance.requestPermission();
+                            if (!ok) {
+                              if (context.mounted) {
+                                showToast(context, 'Bildirishnomaga ruxsat berilmadi. Telefon sozlamalaridan yoqing.');
+                              }
+                              return;
                             }
-                            return;
                           }
-                        }
-                        await st.update(st.value.copyWith(reminderOn: v));
+                          await st.update(st.value.copyWith(reminderOn: v));
+                        },
+                      ),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.clock, color: c.accent),
+                      title: 'Kun almashish vaqti',
+                      subtitle: 'Tungi mashq kechagi kunga yoziladi',
+                      trailing: chevron('${s.dayStartHour.toString().padLeft(2, '0')}:00'),
+                      onTap: () => _pickDayStart(context),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.moon, color: c.violet),
+                      title: 'Mavzu',
+                      trailing: chevron(switch (s.theme) {
+                        ThemePref.system => 'Tizim',
+                        ThemePref.light => "Yorug'",
+                        ThemePref.dark => "Qorong'i",
+                      }),
+                      onTap: () => _pickTheme(context),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.calendar, color: c.amber),
+                      title: 'Maqsad imtihoni',
+                      subtitle: s.examDate == null
+                          ? "Belgilanmagan — sanani qo'ying"
+                          : '${s.examName} · ${formatDay(s.examDate!)}'
+                                '${app.examDaysLeft != null && app.examDaysLeft! >= 0 ? ' (${app.examDaysLeft} kun)' : ''}',
+                      trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      onTap: () => _pickExam(context),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.speaker, color: Tts.instance.voiceMissing ? c.red : c.accent),
+                      title: 'Telefon ovozi (TTS)',
+                      subtitle: Tts.instance.voiceMissing
+                          ? "Inglizcha ovoz topilmadi — o'rnatish uchun bosing"
+                          : 'Inglizcha ovoz va tezlik sozlamalari',
+                      trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      onTap: () async {
+                        final ok = await Tts.instance.openSystemSettings();
+                        if (!ok && context.mounted) showToast(context, 'Sozlamalar ochilmadi');
                       },
                     ),
-                  ),
-                  RowItem(
-                    leading: IconBox(AppIcons.clock, color: c.accent),
-                    title: 'Kun almashish vaqti',
-                    subtitle: 'Tungi mashq kechagi kunga yoziladi',
-                    trailing: chevron('${s.dayStartHour.toString().padLeft(2, '0')}:00'),
-                    onTap: () => _pickDayStart(context),
-                  ),
-                  RowItem(
-                    leading: IconBox(AppIcons.moon, color: c.violet),
-                    title: 'Mavzu',
-                    trailing: chevron(switch (s.theme) {
-                      ThemePref.system => 'Tizim',
-                      ThemePref.light => "Yorug'",
-                      ThemePref.dark => "Qorong'i",
-                    }),
-                    onTap: () => _pickTheme(context),
-                  ),
-                  RowItem(
-                    leading: IconBox(AppIcons.ear, color: c.audio),
-                    title: 'Audio avtomatik',
-                    subtitle: 'Audio rejimida gap darhol o\'qiladi',
-                    trailing: AppSwitch(
-                      label: 'Audio avtomatik',
-                      value: st.audioAutoplay,
-                      onChanged: (v) => st.audioAutoplay = v,
+                    RowItem(
+                      leading: IconBox(AppIcons.ear, color: c.audio),
+                      title: 'Audio avtomatik',
+                      subtitle: 'Audio rejimida gap darhol o\'qiladi',
+                      trailing: AppSwitch(
+                        label: 'Audio avtomatik',
+                        value: st.audioAutoplay,
+                        onChanged: (v) => st.audioAutoplay = v,
+                      ),
                     ),
-                  ),
-                ]),
+                  ],
+                ),
                 const SizedBox(height: 12),
                 const SectionLabel("Ma'lumotlar"),
                 const SizedBox(height: 12),
-                RowGroup(children: [
-                  RowItem(
-                    leading: IconBox(AppIcons.save, color: c.accent),
-                    title: 'Zaxira nusxa',
-                    subtitle: s.lastBackupAt == null ? 'Hali olinmagan' : 'Oxirgi: ${formatMoment(s.lastBackupAt!)}',
-                    trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
-                    onTap: () => _backup(context),
-                  ),
-                  RowItem(
-                    leading: IconBox(AppIcons.upload, color: c.accent),
-                    title: 'Tiklash',
-                    subtitle: 'JSON zaxira fayldan',
-                    trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
-                    onTap: () => _restore(context),
-                  ),
-                  RowItem(
-                    leading: IconBox(AppIcons.download, color: c.accent),
-                    title: "So'zlarni import qilish",
-                    subtitle: "Matn yoki CSV",
-                    trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
-                    onTap: () => push(context, const ImportScreen()),
-                  ),
-                  RowItem(
-                    leading: IconBox(AppIcons.speaker, color: c.accent),
-                    title: 'Talaffuz fayllarini yuklash',
-                    subtitle: "${app.audioCount} ta so'zda bor · fayl nomi = so'z (compulsory.mp3)",
-                    trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
-                    onTap: () => bulkAudioUpload(context),
-                  ),
-                  RowItem(
-                    leading: IconBox(AppIcons.file, color: c.violet),
-                    title: 'Anki uchun eksport',
-                    subtitle: 'Tab bilan ajratilgan .txt',
-                    trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
-                    onTap: () => _anki(context),
-                  ),
-                ]),
+                RowGroup(
+                  children: [
+                    RowItem(
+                      leading: IconBox(AppIcons.save, color: c.accent),
+                      title: 'Zaxira nusxa',
+                      subtitle: s.lastBackupAt == null ? 'Hali olinmagan' : 'Oxirgi: ${formatMoment(s.lastBackupAt!)}',
+                      trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      onTap: () => _backup(context),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.history, color: c.accent),
+                      title: 'Avto-zaxira',
+                      subtitle: "Har kuni ilova ichida · oxirgi 7 kun",
+                      trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      onTap: () => _autoBackups(context),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.upload, color: c.accent),
+                      title: 'Tiklash',
+                      subtitle: 'JSON zaxira fayldan',
+                      trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      onTap: () => _restore(context),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.download, color: c.accent),
+                      title: "So'zlarni import qilish",
+                      subtitle: "Matn yoki CSV",
+                      trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      onTap: () => push(context, const ImportScreen()),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.speaker, color: c.accent),
+                      title: 'Talaffuz fayllarini yuklash',
+                      subtitle: "${app.audioCount} ta so'zda bor · fayl nomi = so'z (compulsory.mp3)",
+                      trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      onTap: () => bulkAudioUpload(context),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.list, color: c.violet),
+                      title: 'CSV eksport',
+                      subtitle: "Excel / Sheets uchun, qayta import qilinadi",
+                      trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      onTap: () => _csv(context),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.file, color: c.violet),
+                      title: 'Anki uchun eksport',
+                      subtitle: 'Tab bilan ajratilgan .txt',
+                      trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      onTap: () => _anki(context),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 18),
                 FutureBuilder<(int, int)>(
                   future: app.totalLogs(),
@@ -213,7 +287,7 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     AppLogo(size: 16, color: c.accent),
                     const SizedBox(width: 6),
-                    Text("So'zlik 1.1 · to'liq oflayn, internet ishlatilmaydi", style: T.text(11, color: c.sec)),
+                    Text("So'zlik 1.2 · to'liq oflayn, internet ishlatilmaydi", style: T.text(11, color: c.sec)),
                   ],
                 ),
               ],
@@ -226,8 +300,15 @@ class SettingsScreen extends StatelessWidget {
 
   // ───────────── tanlagichlar ─────────────
 
-  Future<void> _pickNumber(BuildContext context, String title, int value, int min, int max, int step,
-      ValueChanged<int> onSave) async {
+  Future<void> _pickNumber(
+    BuildContext context,
+    String title,
+    int value,
+    int min,
+    int max,
+    int step,
+    ValueChanged<int> onSave,
+  ) async {
     final c = context.c;
     var v = value;
     final saved = await showModalBottomSheet<bool>(
@@ -244,13 +325,27 @@ class SettingsScreen extends StatelessWidget {
                 const SizedBox(height: 20),
                 Row(
                   children: [
-                    SquareButton(AppIcons.minus, label: 'Kamaytirish', size: 52, color: c.bg,
-                        onTap: v - step < min ? null : () => set(() => v -= step)),
-                    Expanded(
-                      child: Text('$v', textAlign: TextAlign.center, style: T.display(40, color: c.ink)),
+                    SquareButton(
+                      AppIcons.minus,
+                      label: 'Kamaytirish',
+                      size: 52,
+                      color: c.bg,
+                      onTap: v - step < min ? null : () => set(() => v -= step),
                     ),
-                    SquareButton(AppIcons.plus, label: 'Oshirish', size: 52, color: c.bg,
-                        onTap: v + step > max ? null : () => set(() => v += step)),
+                    Expanded(
+                      child: Text(
+                        '$v',
+                        textAlign: TextAlign.center,
+                        style: T.display(40, color: c.ink),
+                      ),
+                    ),
+                    SquareButton(
+                      AppIcons.plus,
+                      label: 'Oshirish',
+                      size: 52,
+                      color: c.bg,
+                      onTap: v + step > max ? null : () => set(() => v += step),
+                    ),
                   ],
                 ),
                 Slider(
@@ -382,6 +477,153 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
+  Future<void> _csv(BuildContext context) async {
+    final app = context.app;
+    try {
+      final ok = await BackupFiles.save('sozlik-${app.today}.csv', app.exportCsvText(), mime: 'text/csv');
+      if (ok && context.mounted) showToast(context, "CSV saqlandi: ${app.wordCount} ta so'z");
+    } on PlatformException catch (e) {
+      if (context.mounted) showToast(context, 'Saqlanmadi: ${e.message ?? e.code}');
+    }
+  }
+
+  Future<void> _autoBackups(BuildContext context) async {
+    final c = context.c;
+    final List<File> files;
+    try {
+      files = await AutoBackup.list();
+    } on MissingPluginException {
+      return;
+    }
+    if (!context.mounted) return;
+    final chosen = await showModalBottomSheet<File>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Avto-zaxira', style: T.display(18, color: c.ink)),
+              const SizedBox(height: 6),
+              Text(
+                "Ilova har kuni birinchi ochilganda ichki nusxa oladi. Telefon almashsa yordam bermaydi — "
+                "buning uchun «Zaxira nusxa» bilan faylni tashqariga saqlang.",
+                style: T.text(13, color: c.sec, height: 1.5),
+              ),
+              const SizedBox(height: 10),
+              if (files.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Text("Hali nusxa yo'q", style: T.text(14, color: c.sec)),
+                ),
+              for (var i = 0; i < files.length; i++)
+                RowItem(
+                  leading: IconBox(AppIcons.history, color: c.accent),
+                  title: formatDay(AutoBackup.dayOf(files[i])),
+                  subtitle: '${(files[i].lengthSync() / 1024).toStringAsFixed(0)} KB · tiklash uchun bosing',
+                  divider: i < files.length - 1,
+                  onTap: () => Navigator.pop(context, files[i]),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (chosen == null || !context.mounted) return;
+    final text = await chosen.readAsString();
+    if (context.mounted) await _restoreText(context, text);
+  }
+
+  Future<void> _pickExam(BuildContext context) async {
+    final c = context.c;
+    final app = context.app;
+    final st = app.settings;
+    final name = TextEditingController(text: st.value.examName);
+    var date = st.value.examDate == null ? null : parseDay(st.value.examDate!);
+    final res = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, set) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 0, 20, 20 + MediaQuery.viewInsetsOf(context).bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Maqsad imtihoni', style: T.display(18, color: c.ink)),
+              const SizedBox(height: 6),
+              Text(
+                "Bosh sahifada qolgan kunlar va shu sur'atdagi prognoz ko'rinadi.",
+                style: T.text(13, color: c.sec, height: 1.5),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: name,
+                style: T.text(15, color: c.ink),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: c.bg,
+                  labelText: 'Nomi',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 10),
+              BigButton(
+                label: date == null ? 'Sanani tanlash' : '${date!.day}-${kMonths[date!.month - 1]} ${date!.year}',
+                icon: AppIcons.calendar,
+                kind: ButtonKind.secondary,
+                onTap: () async {
+                  final now = DateTime.now();
+                  final d = await showDatePicker(
+                    context: context,
+                    initialDate: date ?? DateTime(now.year, 12, 15),
+                    firstDate: DateTime(now.year - 1),
+                    lastDate: DateTime(now.year + 5),
+                    helpText: 'Imtihon sanasi',
+                    cancelText: 'Bekor qilish',
+                    confirmText: 'Tanlash',
+                  );
+                  if (d != null) set(() => date = d);
+                },
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: BigButton(
+                      label: 'Olib tashlash',
+                      kind: ButtonKind.secondary,
+                      onTap: () => Navigator.pop(context, 'clear'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: BigButton(
+                      label: 'Saqlash',
+                      onTap: date == null ? null : () => Navigator.pop(context, 'save'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    final n = name.text.trim();
+    name.dispose();
+    if (res == 'clear') {
+      await st.update(st.value.copyWith(clearExam: true));
+    } else if (res == 'save' && date != null) {
+      final d = date!;
+      await st.update(
+        st.value.copyWith(examName: n.isEmpty ? 'Multilevel' : n, examDate: dayKey(DateTime(d.year, d.month, d.day))),
+      );
+    }
+  }
+
   Future<void> _anki(BuildContext context) async {
     final app = context.app;
     try {
@@ -393,8 +635,6 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _restore(BuildContext context) async {
-    final app = context.app;
-    final c = context.c;
     final String? text;
     try {
       text = await BackupFiles.pickText();
@@ -403,7 +643,12 @@ class SettingsScreen extends StatelessWidget {
       return;
     }
     if (text == null || !context.mounted) return;
+    await _restoreText(context, text);
+  }
 
+  Future<void> _restoreText(BuildContext context, String text) async {
+    final app = context.app;
+    final c = context.c;
     final BackupData data;
     try {
       data = BackupCodec.decode(text.replaceFirst('﻿', ''), currentSchema: AppDatabase.schemaVersion);
@@ -432,24 +677,28 @@ class SettingsScreen extends StatelessWidget {
             children: [
               Text('Tiklash', style: T.display(18, color: c.ink)),
               const SizedBox(height: 6),
-              Text("Nusxada ${data.wordCount} ta so'z va ${data.logCount} ta takrorlash bor$when.",
-                  style: T.text(13, color: c.sec, height: 1.5)),
+              Text(
+                "Nusxada ${data.wordCount} ta so'z va ${data.logCount} ta takrorlash bor$when.",
+                style: T.text(13, color: c.sec, height: 1.5),
+              ),
               const SizedBox(height: 12),
-              RowGroup(children: [
-                RowItem(
-                  leading: IconBox(AppIcons.layers, color: c.accent),
-                  title: 'Birlashtirish',
-                  subtitle: "Faqat yangi so'zlar qo'shiladi, mavjudlari o'zgarmaydi",
-                  onTap: () => Navigator.pop(context, 'merge'),
-                ),
-                RowItem(
-                  leading: IconBox(AppIcons.reset, color: c.red),
-                  title: "To'liq almashtirish",
-                  titleColor: c.red,
-                  subtitle: "Hozirgi barcha ma'lumot nusxadagisi bilan almashtiriladi",
-                  onTap: () => Navigator.pop(context, 'replace'),
-                ),
-              ]),
+              RowGroup(
+                children: [
+                  RowItem(
+                    leading: IconBox(AppIcons.layers, color: c.accent),
+                    title: 'Birlashtirish',
+                    subtitle: "Faqat yangi so'zlar qo'shiladi, mavjudlari o'zgarmaydi",
+                    onTap: () => Navigator.pop(context, 'merge'),
+                  ),
+                  RowItem(
+                    leading: IconBox(AppIcons.reset, color: c.red),
+                    title: "To'liq almashtirish",
+                    titleColor: c.red,
+                    subtitle: "Hozirgi barcha ma'lumot nusxadagisi bilan almashtiriladi",
+                    onTap: () => Navigator.pop(context, 'replace'),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -490,10 +739,16 @@ class SettingsScreen extends StatelessWidget {
         title: Text(title),
         content: Text(text),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Bekor qilish', style: TextStyle(color: c.sec))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Bekor qilish', style: TextStyle(color: c.sec)),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text(ok, style: TextStyle(color: danger ? c.red : c.accent, fontWeight: FontWeight.w700)),
+            child: Text(
+              ok,
+              style: TextStyle(color: danger ? c.red : c.accent, fontWeight: FontWeight.w700),
+            ),
           ),
         ],
       ),

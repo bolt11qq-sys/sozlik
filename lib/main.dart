@@ -31,6 +31,7 @@ Future<void> main() async {
     final settings = SettingsStore(db, prefs);
     final app = AppStore(db, settings);
     await app.load();
+    unawaited(app.maintenance());
     unawaited(Tts.instance.init());
     unawaited(Notifier.instance.init());
     runApp(SozlikApp(app: app));
@@ -85,10 +86,8 @@ class SozlikApp extends StatelessWidget {
             locale: const Locale('uz'),
             supportedLocales: const [Locale('uz'), Locale('en')],
             localizationsDelegates: GlobalMaterialLocalizations.delegates,
-            builder: (context, child) => AnnotatedRegion<SystemUiOverlayStyle>(
-              value: overlayFor(context.c),
-              child: child!,
-            ),
+            builder: (context, child) =>
+                AnnotatedRegion<SystemUiOverlayStyle>(value: overlayFor(context.c), child: child!),
             home: const Shell(),
           );
         },
@@ -217,8 +216,10 @@ class _NavBar extends StatelessWidget {
                         children: [
                           AppIcon(_items[i].$1, size: 21, color: i == index ? c.accent : c.sec),
                           const SizedBox(height: 3),
-                          Text(_items[i].$2,
-                              style: T.text(10, w: FontWeight.w600, color: i == index ? c.accent : c.sec)),
+                          Text(
+                            _items[i].$2,
+                            style: T.text(10, w: FontWeight.w600, color: i == index ? c.accent : c.sec),
+                          ),
                         ],
                       ),
                     ),
@@ -253,8 +254,11 @@ class _FatalApp extends StatelessWidget {
                 const SizedBox(height: 18),
                 Text("Ilova ochilmadi", style: T.display(20)),
                 const SizedBox(height: 8),
-                Text("Ma'lumotlar bazasini ochishda xato yuz berdi. Ilovani qayta ishga tushiring.\n\n$error",
-                    textAlign: TextAlign.center, style: T.text(13, color: const Color(0xFF5E6A64), height: 1.5)),
+                Text(
+                  "Ma'lumotlar bazasini ochishda xato yuz berdi. Ilovani qayta ishga tushiring.\n\n$error",
+                  textAlign: TextAlign.center,
+                  style: T.text(13, color: const Color(0xFF5E6A64), height: 1.5),
+                ),
               ],
             ),
           ),

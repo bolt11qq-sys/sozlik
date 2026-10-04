@@ -25,7 +25,13 @@ enum CardPhase { question, revealed, answered }
 /// tanlanadi; to'g'ri javob esa so'zning joriy holatidan olinadi — shuning
 /// uchun takrorlash paytida tahrirlangan so'z darhol yangilanadi.
 class ReviewCard {
-  ReviewCard({required this.wordId, required this.mode, required this.practice, this.distractors = const [], this.seed = 0});
+  ReviewCard({
+    required this.wordId,
+    required this.mode,
+    required this.practice,
+    this.distractors = const [],
+    this.seed = 0,
+  });
 
   final int wordId;
   final ReviewMode mode;
@@ -53,13 +59,16 @@ class _Snapshot {
 }
 
 class ReviewStore extends ChangeNotifier {
-  ReviewStore(this.app, {this.kind = SessionKind.daily, this.forceMode, this.tag, Random? random})
-      : _rng = random ?? Random();
+  ReviewStore(this.app, {this.kind = SessionKind.daily, this.forceMode, this.tag, this.limit, Random? random})
+    : _rng = random ?? Random();
 
   final AppStore app;
   final SessionKind kind;
   final ReviewMode? forceMode;
   final String? tag;
+
+  /// "Tez seans": kartochkalar soni chegarasi.
+  final int? limit;
   final Random _rng;
 
   static const undoWindow = Duration(seconds: 10);
@@ -94,28 +103,28 @@ class ReviewStore extends ChangeNotifier {
   DateTime? get undoUntil => canUndo ? _undoUntil : null;
 
   String get title => switch (kind) {
-        SessionKind.hard => "Qiyin so'zlar",
-        SessionKind.tag => tag ?? 'Teg',
-        SessionKind.daily => card?.mode.label ?? 'Takrorlash',
-      };
+    SessionKind.hard => "Qiyin so'zlar",
+    SessionKind.tag => tag ?? 'Teg',
+    SessionKind.daily => card?.mode.label ?? 'Takrorlash',
+  };
 
   // ───────────── seansni tuzish ─────────────
 
   void start() {
     final ids = switch (kind) {
       // Rejim chipi bosilgan bo'lsa — faqat bugun shu rejimda chiqadigan so'zlar.
-      SessionKind.daily => forceMode == null
-          ? app.plan.ids
-          : app.plan.ids.where((id) => app.modeFor(app.word(id)!) == forceMode).toList(),
+      SessionKind.daily =>
+        forceMode == null ? app.plan.ids : app.plan.ids.where((id) => app.modeFor(app.word(id)!) == forceMode).toList(),
       SessionKind.hard => (app.difficultWords.map((w) => w.id!).toList()..shuffle(_rng)),
-      SessionKind.tag => (app.activeWords
-          .where((w) => w.tags.any((t) => t.toLowerCase() == tag?.toLowerCase()))
-          .map((w) => w.id!)
-          .toList()
-        ..shuffle(_rng)),
+      SessionKind.tag =>
+        (app.activeWords
+            .where((w) => w.tags.any((t) => t.toLowerCase() == tag?.toLowerCase()))
+            .map((w) => w.id!)
+            .toList()
+          ..shuffle(_rng)),
     };
-    final limit = kind == SessionKind.daily ? ids.length : min(ids.length, 40);
-    _queue = [for (final id in ids.take(limit)) _makeCard(id, practice: kind != SessionKind.daily)];
+    final cap = min(ids.length, limit ?? (kind == SessionKind.daily ? ids.length : 40));
+    _queue = [for (final id in ids.take(cap)) _makeCard(id, practice: kind != SessionKind.daily)];
     _index = 0;
     phase = CardPhase.question;
     notifyListeners();
@@ -127,13 +136,24 @@ class ReviewStore extends ChangeNotifier {
     var distractors = const <String>[];
     if (m == ReviewMode.audio) {
       distractors = _audioDistractors(w);
-      if (distractors.length < 3) m = ReviewMode.recognize;
+      if (distractors.length < 3) m = _fallback(w, ReviewMode.audio);
     } else if (m == ReviewMode.synonym) {
       distractors = _synonymDistractors(w);
-      if (distractors.length < 3) m = app.s.modeProduce ? ReviewMode.produce : ReviewMode.recognize;
+      if (distractors.length < 3) m = _fallback(w, ReviewMode.synonym);
     }
     return ReviewCard(wordId: id, mode: m, practice: practice, distractors: distractors, seed: _rng.nextInt(1 << 20));
   }
+
+  /// Variantlar yetmasa — o'chirilmagan, variant talab qilmaydigan rejim.
+  ReviewMode _fallback(Word w, ReviewMode failed) => pickMode(
+    stage: w.stage,
+    salt: w.correctCount + w.wrongCount,
+    enabled: app.s.enabledModes.difference({failed}).isEmpty
+        ? {ReviewMode.recognize}
+        : app.s.enabledModes.difference({failed}),
+    canAudio: false,
+    canSynonym: false,
+  );
 
   ReviewMode _modeFor(Word w) {
     if (forceMode != null) {
@@ -157,10 +177,16 @@ class ReviewStore extends ChangeNotifier {
     return app.modeFor(w);
   }
 
+  /// [o] so'zi [w] bilan ma'nodosh bo'lishi mumkinmi (sinonimlari kesishadi).
+  bool _related(Word w, Word o) {
+    final a = {w.key, ...w.synonyms.map(Word.normalizeKey)};
+    final b = {o.key, ...o.synonyms.map(Word.normalizeKey)};
+    return a.intersection(b).isNotEmpty;
+  }
+
   /// Audio: uchta boshqa so'z — avval shu tegdagi, keyin shu turkumdagi.
   List<String> _audioDistractors(Word w) {
-    final banned = {w.key, ...w.synonyms.map(Word.normalizeKey)};
-    final others = app.allWords.where((o) => o.id != w.id && !banned.contains(o.key)).toList()..shuffle(_rng);
+    final others = app.allWords.where((o) => o.id != w.id && !_related(w, o)).toList()..shuffle(_rng);
     int score(Word o) {
       var s = 0;
       if (o.tags.any((t) => w.tags.contains(t))) s += 2;
@@ -183,7 +209,7 @@ class ReviewStore extends ChangeNotifier {
     final pool = <String>[];
     final sameTag = <String>[];
     for (final o in app.allWords) {
-      if (o.id == w.id) continue;
+      if (o.id == w.id || _related(w, o)) continue;
       for (final cand in [o.en, ...o.synonyms]) {
         final k = Word.normalizeKey(cand);
         if (banned.contains(k)) continue;
@@ -205,8 +231,7 @@ class ReviewStore extends ChangeNotifier {
   }
 
   /// Sinonim rejimida to'g'ri javob — so'zning sinonimlaridan biri.
-  String synonymAnswer(Word w, ReviewCard c) =>
-      w.synonyms.isEmpty ? w.en : w.synonyms[c.seed % w.synonyms.length];
+  String synonymAnswer(Word w, ReviewCard c) => w.synonyms.isEmpty ? w.en : w.synonyms[c.seed % w.synonyms.length];
 
   String correctOption(Word w, ReviewCard c) => c.mode == ReviewMode.synonym ? synonymAnswer(w, c) : w.en;
 

@@ -146,13 +146,7 @@ ThemeData buildTheme(AppColors c) {
   final scheme = ColorScheme.fromSeed(
     seedColor: c.accent,
     brightness: c.isDark ? Brightness.dark : Brightness.light,
-  ).copyWith(
-    primary: c.accent,
-    onPrimary: c.onAccent,
-    surface: c.card,
-    onSurface: c.ink,
-    error: c.red,
-  );
+  ).copyWith(primary: c.accent, onPrimary: c.onAccent, surface: c.card, onSurface: c.ink, error: c.red);
   return base.copyWith(
     colorScheme: scheme,
     scaffoldBackgroundColor: c.bg,
@@ -197,16 +191,16 @@ ThemeData buildTheme(AppColors c) {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
     ),
     progressIndicatorTheme: ProgressIndicatorThemeData(color: c.accent),
-    pageTransitionsTheme: const PageTransitionsTheme(builders: {
-      TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
-    }),
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {TargetPlatform.android: FadeForwardsPageTransitionsBuilder()},
+    ),
   );
 }
 
 SystemUiOverlayStyle overlayFor(AppColors c) => SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: c.isDark ? Brightness.light : Brightness.dark,
-      statusBarBrightness: c.isDark ? Brightness.dark : Brightness.light,
-      systemNavigationBarColor: c.bg,
-      systemNavigationBarIconBrightness: c.isDark ? Brightness.light : Brightness.dark,
-    );
+  statusBarColor: Colors.transparent,
+  statusBarIconBrightness: c.isDark ? Brightness.light : Brightness.dark,
+  statusBarBrightness: c.isDark ? Brightness.dark : Brightness.light,
+  systemNavigationBarColor: c.bg,
+  systemNavigationBarIconBrightness: c.isDark ? Brightness.light : Brightness.dark,
+);

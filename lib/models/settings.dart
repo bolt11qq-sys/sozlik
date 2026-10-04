@@ -15,6 +15,8 @@ class AppSettings {
     this.dayStartHour = 4,
     this.theme = ThemePref.system,
     this.lastBackupAt,
+    this.examName = 'Multilevel',
+    this.examDate,
   });
 
   final int dailyNew;
@@ -33,12 +35,16 @@ class AppSettings {
   /// UTC millis.
   final int? lastBackupAt;
 
+  /// Maqsad imtihoni va uning sanasi (`YYYY-MM-DD`), ixtiyoriy.
+  final String examName;
+  final String? examDate;
+
   Set<ReviewMode> get enabledModes => {
-        if (modeRecognize) ReviewMode.recognize,
-        if (modeProduce) ReviewMode.produce,
-        if (modeSynonym) ReviewMode.synonym,
-        if (modeAudio) ReviewMode.audio,
-      };
+    if (modeRecognize) ReviewMode.recognize,
+    if (modeProduce) ReviewMode.produce,
+    if (modeSynonym) ReviewMode.synonym,
+    if (modeAudio) ReviewMode.audio,
+  };
 
   bool isEnabled(ReviewMode m) => enabledModes.contains(m);
 
@@ -57,54 +63,62 @@ class AppSettings {
     int? dayStartHour,
     ThemePref? theme,
     int? lastBackupAt,
-  }) =>
-      AppSettings(
-        dailyNew: dailyNew ?? this.dailyNew,
-        dailyReview: dailyReview ?? this.dailyReview,
-        modeRecognize: modeRecognize ?? this.modeRecognize,
-        modeProduce: modeProduce ?? this.modeProduce,
-        modeSynonym: modeSynonym ?? this.modeSynonym,
-        modeAudio: modeAudio ?? this.modeAudio,
-        reminderOn: reminderOn ?? this.reminderOn,
-        reminderTime: reminderTime ?? this.reminderTime,
-        dayStartHour: dayStartHour ?? this.dayStartHour,
-        theme: theme ?? this.theme,
-        lastBackupAt: lastBackupAt ?? this.lastBackupAt,
-      );
+    String? examName,
+    String? examDate,
+    bool clearExam = false,
+  }) => AppSettings(
+    dailyNew: dailyNew ?? this.dailyNew,
+    dailyReview: dailyReview ?? this.dailyReview,
+    modeRecognize: modeRecognize ?? this.modeRecognize,
+    modeProduce: modeProduce ?? this.modeProduce,
+    modeSynonym: modeSynonym ?? this.modeSynonym,
+    modeAudio: modeAudio ?? this.modeAudio,
+    reminderOn: reminderOn ?? this.reminderOn,
+    reminderTime: reminderTime ?? this.reminderTime,
+    dayStartHour: dayStartHour ?? this.dayStartHour,
+    theme: theme ?? this.theme,
+    lastBackupAt: lastBackupAt ?? this.lastBackupAt,
+    examName: examName ?? this.examName,
+    examDate: clearExam ? null : (examDate ?? this.examDate),
+  );
 
   AppSettings withMode(ReviewMode m, bool on) => switch (m) {
-        ReviewMode.recognize => copyWith(modeRecognize: on),
-        ReviewMode.produce => copyWith(modeProduce: on),
-        ReviewMode.synonym => copyWith(modeSynonym: on),
-        ReviewMode.audio => copyWith(modeAudio: on),
-      };
+    ReviewMode.recognize => copyWith(modeRecognize: on),
+    ReviewMode.produce => copyWith(modeProduce: on),
+    ReviewMode.synonym => copyWith(modeSynonym: on),
+    ReviewMode.audio => copyWith(modeAudio: on),
+  };
 
   Map<String, Object?> toMap() => {
-        'id': 1,
-        'dailyNew': dailyNew,
-        'dailyReview': dailyReview,
-        'modeRecognize': modeRecognize ? 1 : 0,
-        'modeProduce': modeProduce ? 1 : 0,
-        'modeSynonym': modeSynonym ? 1 : 0,
-        'modeAudio': modeAudio ? 1 : 0,
-        'reminderOn': reminderOn ? 1 : 0,
-        'reminderTime': reminderTime,
-        'dayStartHour': dayStartHour,
-        'theme': theme.name,
-        'lastBackupAt': lastBackupAt,
-      };
+    'id': 1,
+    'dailyNew': dailyNew,
+    'dailyReview': dailyReview,
+    'modeRecognize': modeRecognize ? 1 : 0,
+    'modeProduce': modeProduce ? 1 : 0,
+    'modeSynonym': modeSynonym ? 1 : 0,
+    'modeAudio': modeAudio ? 1 : 0,
+    'reminderOn': reminderOn ? 1 : 0,
+    'reminderTime': reminderTime,
+    'dayStartHour': dayStartHour,
+    'theme': theme.name,
+    'lastBackupAt': lastBackupAt,
+    'examName': examName,
+    'examDate': examDate,
+  };
 
   factory AppSettings.fromMap(Map<String, Object?> m) => AppSettings(
-        dailyNew: (m['dailyNew'] as int?) ?? 30,
-        dailyReview: (m['dailyReview'] as int?) ?? 60,
-        modeRecognize: (m['modeRecognize'] as int?) != 0,
-        modeProduce: (m['modeProduce'] as int?) != 0,
-        modeSynonym: (m['modeSynonym'] as int?) != 0,
-        modeAudio: (m['modeAudio'] as int?) != 0,
-        reminderOn: (m['reminderOn'] as int?) != 0,
-        reminderTime: (m['reminderTime'] as String?) ?? '20:00',
-        dayStartHour: (m['dayStartHour'] as int?) ?? 4,
-        theme: ThemePref.values.firstWhere((t) => t.name == m['theme'], orElse: () => ThemePref.system),
-        lastBackupAt: m['lastBackupAt'] as int?,
-      );
+    dailyNew: (m['dailyNew'] as int?) ?? 30,
+    dailyReview: (m['dailyReview'] as int?) ?? 60,
+    modeRecognize: (m['modeRecognize'] as int?) != 0,
+    modeProduce: (m['modeProduce'] as int?) != 0,
+    modeSynonym: (m['modeSynonym'] as int?) != 0,
+    modeAudio: (m['modeAudio'] as int?) != 0,
+    reminderOn: (m['reminderOn'] as int?) != 0,
+    reminderTime: (m['reminderTime'] as String?) ?? '20:00',
+    dayStartHour: (m['dayStartHour'] as int?) ?? 4,
+    theme: ThemePref.values.firstWhere((t) => t.name == m['theme'], orElse: () => ThemePref.system),
+    lastBackupAt: m['lastBackupAt'] as int?,
+    examName: (m['examName'] as String?) ?? 'Multilevel',
+    examDate: m['examDate'] as String?,
+  );
 }

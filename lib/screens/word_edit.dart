@@ -142,11 +142,19 @@ class _WordEditScreenState extends State<WordEditScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("So'zni o'chirish"),
-        content: Text('"${widget.word!.en}" va uning butun tarixi o\'chiriladi. Buni qaytarib bo\'lmaydi.\n\n'
-            "Faqat takrorlashdan olib qo'ymoqchi bo'lsangiz, arxivlash yetarli."),
+        content: Text(
+          '"${widget.word!.en}" va uning butun tarixi o\'chiriladi. Buni qaytarib bo\'lmaydi.\n\n'
+          "Faqat takrorlashdan olib qo'ymoqchi bo'lsangiz, arxivlash yetarli.",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Bekor qilish', style: TextStyle(color: c.sec))),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text("O'chirish", style: TextStyle(color: c.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Bekor qilish', style: TextStyle(color: c.sec)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text("O'chirish", style: TextStyle(color: c.red)),
+          ),
         ],
       ),
     );
@@ -216,7 +224,10 @@ class _WordEditScreenState extends State<WordEditScreen> {
             ),
             if (existing.isNotEmpty) ...[
               const SizedBox(height: 14),
-              Text('Mavjud teglar', style: T.text(12, w: FontWeight.w600, color: c.sec)),
+              Text(
+                'Mavjud teglar',
+                style: T.text(12, w: FontWeight.w600, color: c.sec),
+              ),
               const SizedBox(height: 8),
               Wrap(
                 spacing: 8,
@@ -228,7 +239,10 @@ class _WordEditScreenState extends State<WordEditScreen> {
                       radius: 999,
                       border: Border.all(color: c.line),
                       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                      child: Text(t, style: T.text(13, w: FontWeight.w600, color: c.ink)),
+                      child: Text(
+                        t,
+                        style: T.text(13, w: FontWeight.w600, color: c.ink),
+                      ),
                     ),
                 ],
               ),
@@ -266,25 +280,41 @@ class _WordEditScreenState extends State<WordEditScreen> {
                     keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                     children: [
                       TopBar(
-                        title: _editing ? 'Tahrirlash' : (_added > 0 ? "Yangi so'z · $_added ta qo'shildi" : "Yangi so'z"),
+                        title: _editing
+                            ? 'Tahrirlash'
+                            : (_added > 0 ? "Yangi so'z · $_added ta qo'shildi" : "Yangi so'z"),
                         onBack: () => Navigator.of(context).maybePop(),
                         trailing: _editing
                             ? SquareButton(AppIcons.trash, label: "O'chirish", iconColor: c.red, onTap: _delete)
-                            : SquareButton(AppIcons.download, label: 'Import',
-                                onTap: () => Navigator.of(context).pushReplacement(
-                                    MaterialPageRoute(builder: (_) => const ImportScreen()))),
+                            : SquareButton(
+                                AppIcons.download,
+                                label: 'Import',
+                                onTap: () =>
+                                    Navigator.of(context)
+                                        .pushReplacement(MaterialPageRoute(builder: (_) => const ImportScreen())),
+                              ),
                       ),
                       const SizedBox(height: 16),
-                      _Labeled('Inglizcha', error: enErr,
-                          child: _Field(
-                            controller: _en,
-                            focusNode: _enFocus,
-                            autofocus: !_editing && widget.initialEn == null,
-                            hint: 'compulsory',
-                            latin: true,
-                          )),
-                      _Labeled("O'zbekcha", error: uzErr, child: _Field(controller: _uz, hint: 'majburiy')),
-                      _Labeled('Sinonimlar', child: _Field(controller: _syn, hint: 'vergul bilan: mandatory, required', latin: true)),
+                      _Labeled(
+                        'Inglizcha',
+                        error: enErr,
+                        child: _Field(
+                          controller: _en,
+                          focusNode: _enFocus,
+                          autofocus: !_editing && widget.initialEn == null,
+                          hint: 'compulsory',
+                          latin: true,
+                        ),
+                      ),
+                      _Labeled(
+                        "O'zbekcha",
+                        error: uzErr,
+                        child: _Field(controller: _uz, hint: 'majburiy'),
+                      ),
+                      _Labeled(
+                        'Sinonimlar',
+                        child: _Field(controller: _syn, hint: 'vergul bilan: mandatory, required', latin: true),
+                      ),
                       _Labeled(
                         'Misol gap',
                         error: _ex.text.trim().isNotEmpty && _en.text.trim().isNotEmpty && masked == null
@@ -298,8 +328,10 @@ class _WordEditScreenState extends State<WordEditScreen> {
                           latin: true,
                         ),
                       ),
-                      _Labeled('Misol tarjimasi (ixtiyoriy)',
-                          child: _Field(controller: _exUz, hint: "Ta'lim 16 yoshgacha majburiy.", lines: 2)),
+                      _Labeled(
+                        'Misol tarjimasi (ixtiyoriy)',
+                        child: _Field(controller: _exUz, hint: "Ta'lim 16 yoshgacha majburiy.", lines: 2),
+                      ),
                       _Labeled(
                         "So'z turkumi",
                         child: Wrap(
@@ -360,10 +392,8 @@ class _WordEditScreenState extends State<WordEditScreen> {
                                       _newAudio != null
                                           ? '$_newAudioName · tinglash uchun bosing'
                                           : _hasAudio
-                                              ? 'Tinglash uchun bosing'
-                                              : (Tts.instance.available
-                                                  ? "mp3, m4a, wav… Yo'q bo'lsa, telefon ovozi o'qiydi"
-                                                  : "mp3, m4a, wav… Telefonda inglizcha ovoz (TTS) yo'q"),
+                                          ? 'Tinglash uchun bosing'
+                                          : "mp3, m4a, wav… Yo'q bo'lsa, telefon ovozi o'qiydi",
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                       style: T.text(12, color: c.sec),
@@ -400,8 +430,10 @@ class _WordEditScreenState extends State<WordEditScreen> {
                               IconBox(AppIcons.message, color: c.violet),
                               const SizedBox(width: 11),
                               Expanded(
-                                child: Text("Misol gap telefon ovozida o'qiladi — tinglash",
-                                    style: T.text(13, color: c.sec)),
+                                child: Text(
+                                  "Misol gap telefon ovozida o'qiladi — tinglash",
+                                  style: T.text(13, color: c.sec),
+                                ),
                               ),
                               AppIcon(AppIcons.speaker, size: 18, color: c.violet),
                             ],
@@ -410,16 +442,18 @@ class _WordEditScreenState extends State<WordEditScreen> {
                     ],
                   ),
                 ),
-                BottomBar(children: [
-                  if (_editing)
-                    BigButton(label: 'Bekor qilish', kind: ButtonKind.secondary, onTap: () => Navigator.pop(context))
-                  else
-                    BigButton(label: 'Saqlash', kind: ButtonKind.secondary, onTap: _saving ? null : _saveAndClose),
-                  if (_editing)
-                    BigButton(label: 'Saqlash', icon: AppIcons.check, onTap: _saving ? null : _saveAndClose)
-                  else
-                    BigButton(label: 'Saqlab, keyingisi', icon: AppIcons.plus, onTap: _saving ? null : _saveAndNext),
-                ]),
+                BottomBar(
+                  children: [
+                    if (_editing)
+                      BigButton(label: 'Bekor qilish', kind: ButtonKind.secondary, onTap: () => Navigator.pop(context))
+                    else
+                      BigButton(label: 'Saqlash', kind: ButtonKind.secondary, onTap: _saving ? null : _saveAndClose),
+                    if (_editing)
+                      BigButton(label: 'Saqlash', icon: AppIcons.check, onTap: _saving ? null : _saveAndClose)
+                    else
+                      BigButton(label: 'Saqlab, keyingisi', icon: AppIcons.plus, onTap: _saving ? null : _saveAndNext),
+                  ],
+                ),
               ],
             );
           },
@@ -445,7 +479,10 @@ class _Labeled extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(label, style: T.text(12, w: FontWeight.w600, color: c.sec)),
+          Text(
+            label,
+            style: T.text(12, w: FontWeight.w600, color: c.sec),
+          ),
           const SizedBox(height: 6),
           child,
           AnimatedSize(
@@ -454,7 +491,10 @@ class _Labeled extends StatelessWidget {
                 ? const SizedBox(width: double.infinity)
                 : Padding(
                     padding: const EdgeInsets.only(top: 6, left: 4),
-                    child: Text(error!, style: T.text(12, color: warn ? c.amber : c.red, w: FontWeight.w500)),
+                    child: Text(
+                      error!,
+                      style: T.text(12, color: warn ? c.amber : c.red, w: FontWeight.w500),
+                    ),
                   ),
           ),
         ],
@@ -537,7 +577,10 @@ class _OutlineChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: T.text(13, w: FontWeight.w600, color: color)),
+          Text(
+            label,
+            style: T.text(13, w: FontWeight.w600, color: color),
+          ),
           if (trailing != null) ...[const SizedBox(width: 6), AppIcon(trailing!, size: 13, color: color, stroke: 2.2)],
         ],
       ),

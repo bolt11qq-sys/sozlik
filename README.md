@@ -23,7 +23,9 @@ internet ruxsati yo'q, akkaunt va bulut yo'q. Texnik topshiriq: [SOZLIK-TZ.md](S
 
 **2-bosqich**: qiyin so'zlar mashqi, gap yozish mashqi, so'z tafsiloti (tarix), qorong'i mavzu.
 
-**3-bosqich**: teg bo'yicha alohida seans, Anki uchun eksport. *(Bosh ekran vidjeti hali yo'q.)*
+**3-bosqich**: teg bo'yicha alohida seans, Anki uchun eksport, bosh ekran vidjeti.
+
+**1.2**: tez seans (10 ta), maqsad imtihoni sanasi va prognoz, faollik xaritasi (15 hafta), so'zlarni ko'plab tanlab teg/arxiv/qiyin/o'chirish, CSV eksport (qayta import qilinadi), kunlik avto-zaxira (ilova ichida, 7 kun), telefon TTS sozlamasini ochish.
 
 ## Tuzilish
 

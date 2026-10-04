@@ -6,15 +6,15 @@ import 'package:sozlik/models/word.dart';
 import 'package:sozlik/srs/scheduler.dart';
 
 Word w(int id, {int stage = 1, String due = '2026-10-04', String? lastSeen = '2026-10-01', String en = 'x'}) => Word(
-      id: id,
-      en: en == 'x' ? 'word$id' : en,
-      uz: 'soz$id',
-      stage: stage,
-      nextDue: due,
-      lastSeen: stage == 0 ? null : lastSeen,
-      createdAt: id,
-      updatedAt: id,
-    );
+  id: id,
+  en: en == 'x' ? 'word$id' : en,
+  uz: 'soz$id',
+  stage: stage,
+  nextDue: due,
+  lastSeen: stage == 0 ? null : lastSeen,
+  createdAt: id,
+  updatedAt: id,
+);
 
 void main() {
   const today = '2026-10-04';
@@ -94,7 +94,9 @@ void main() {
 
   group('Kunlik navbat (TZ 5.3)', () {
     test("40 ta muddati o'tgan so'z bo'lsa ham, kunlik chegaradan oshmaydi", () {
-      final words = [for (var i = 1; i <= 40; i++) w(i, stage: 2, due: '2026-09-${(i % 28 + 1).toString().padLeft(2, '0')}')];
+      final words = [
+        for (var i = 1; i <= 40; i++) w(i, stage: 2, due: '2026-09-${(i % 28 + 1).toString().padLeft(2, '0')}'),
+      ];
       final p = buildQueue(words: words, today: today, dailyNew: 30, dailyReview: 30);
       expect(p.total, 30);
       final p2 = buildQueue(words: words, today: today, dailyNew: 30, dailyReview: 60, doneToday: 50);
@@ -174,12 +176,16 @@ void main() {
       final noAudio = {ReviewMode.recognize, ReviewMode.produce, ReviewMode.synonym};
       for (var stage = 0; stage <= 6; stage++) {
         for (var salt = 0; salt < 4; salt++) {
-          expect(pickMode(stage: stage, salt: salt, enabled: noAudio, canAudio: true, canSynonym: true),
-              isNot(ReviewMode.audio));
+          expect(
+            pickMode(stage: stage, salt: salt, enabled: noAudio, canAudio: true, canSynonym: true),
+            isNot(ReviewMode.audio),
+          );
         }
       }
-      expect(pickMode(stage: 0, salt: 0, enabled: {ReviewMode.produce}, canAudio: true, canSynonym: true),
-          ReviewMode.produce);
+      expect(
+        pickMode(stage: 0, salt: 0, enabled: {ReviewMode.produce}, canAudio: true, canSynonym: true),
+        ReviewMode.produce,
+      );
     });
   });
 
@@ -229,8 +235,10 @@ void main() {
 
   group('Audio: misol gapni yashirish', () {
     test("So'z va uning shakllari topiladi", () {
-      expect(maskExample('Education is compulsory for children.', 'compulsory')!.withPlaceholder(),
-          'Education is ? ? ? for children.');
+      expect(
+        maskExample('Education is compulsory for children.', 'compulsory')!.withPlaceholder(),
+        'Education is ? ? ? for children.',
+      );
       expect(maskExample('His health deteriorated quickly.', 'deteriorate')!.hidden, 'deteriorated');
       expect(maskExample('Water is SCARCE here.', 'scarce')!.hidden, 'SCARCE');
       expect(maskExample('She is studying hard.', 'study')!.hidden, 'studying');

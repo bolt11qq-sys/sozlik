@@ -2,9 +2,13 @@
 // Buzuq fayl butunlay rad etiladi — qisman tiklash yo'q.
 
 import 'dart:convert';
-import 'dart:typed_data';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 
 import '../srs/scheduler.dart';
 
@@ -66,19 +70,8 @@ const Map<String, Map<String, String>> _schema = {
     'stageAfter': 'int',
     'practice': 'int',
   },
-  'day_stats': {
-    'day': 'day',
-    'reviewed': 'int',
-    'correct': 'int',
-    'newLearned': 'int',
-    'goalMet': 'int',
-  },
-  'sentences': {
-    'id': 'int',
-    'wordId': 'int',
-    'text': 'str',
-    'createdAt': 'int',
-  },
+  'day_stats': {'day': 'day', 'reviewed': 'int', 'correct': 'int', 'newLearned': 'int', 'goalMet': 'int'},
+  'sentences': {'id': 'int', 'wordId': 'int', 'text': 'str', 'createdAt': 'int'},
   'settings': {
     'dailyNew': 'int',
     'dailyReview': 'int',
@@ -91,6 +84,8 @@ const Map<String, Map<String, String>> _schema = {
     'dayStartHour': 'int',
     'theme': 'str',
     'lastBackupAt': 'int?',
+    'examName': 'str',
+    'examDate': 'day?',
   },
 };
 
@@ -98,7 +93,7 @@ const Map<String, Map<String, String>> _schema = {
 const Map<String, Map<String, Object?>> _defaults = {
   'review_logs': {'practice': 0, 'answerText': null},
   'words': {'synonyms': null, 'example': null, 'exampleUz': null, 'pos': null, 'audio': null, 'lastSeen': null},
-  'settings': {'reminderOn': 1, 'lastBackupAt': null},
+  'settings': {'reminderOn': 1, 'lastBackupAt': null, 'examName': 'Multilevel', 'examDate': null},
 };
 
 class BackupCodec {
@@ -147,9 +142,7 @@ class BackupCodec {
         continue;
       }
       if (rows is! List) throw BackupFormatException("'$name' jadvali noto'g'ri.");
-      tables[name] = [
-        for (var i = 0; i < rows.length; i++) _cleanRow(name, rows[i], i, entry.value),
-      ];
+      tables[name] = [for (var i = 0; i < rows.length; i++) _cleanRow(name, rows[i], i, entry.value)];
     }
     _checkIntegrity(tables);
     final exportedAt = root['exportedAt'];
@@ -160,7 +153,9 @@ class BackupCodec {
     if (raw is! Map) throw BackupFormatException("'$table' jadvalida ${index + 1}-qator buzilgan.");
     final out = <String, Object?>{};
     for (final c in cols.entries) {
-      var v = raw.containsKey(c.key) ? raw[c.key] : (_defaults[table]?.containsKey(c.key) ?? false ? _defaults[table]![c.key] : _missing);
+      var v = raw.containsKey(c.key)
+          ? raw[c.key]
+          : (_defaults[table]?.containsKey(c.key) ?? false ? _defaults[table]![c.key] : _missing);
       if (identical(v, _missing)) {
         throw BackupFormatException("'$table' jadvalida ${index + 1}-qatorda '${c.key}' yo'q.");
       }
@@ -242,4 +237,47 @@ class BackupFiles {
     final bytes = await f.xFile.readAsBytes();
     return utf8.decode(bytes, allowMalformed: true);
   }
+}
+
+/// Avtomatik kunlik zaxira (ilova ichida, oxirgi 7 kun). Telefon yo'qolsa
+/// yordam bermaydi — buning uchun "Zaxira nusxa" bilan faylni tashqariga saqlang.
+class AutoBackup {
+  static const keep = 7;
+
+  static Future<Directory> _dir() async {
+    final base = await getApplicationDocumentsDirectory();
+    final d = Directory(p.join(base.path, 'auto-backups'));
+    await d.create(recursive: true);
+    return d;
+  }
+
+  /// Bugun hali olinmagan bo'lsa — nusxa yozadi va eskilarini o'chiradi.
+  static Future<void> runDaily(String today, Future<String> Function() encode) async {
+    try {
+      final dir = await _dir();
+      final file = File(p.join(dir.path, 'sozlik-auto-$today.json'));
+      if (!await file.exists()) {
+        await file.writeAsString(await encode(), flush: true);
+      }
+      final all = await list();
+      for (final old in all.skip(keep)) {
+        await old.delete();
+      }
+    } on FileSystemException catch (e) {
+      debugPrint('Avto-zaxira yozilmadi: $e');
+    } on MissingPluginException catch (e) {
+      debugPrint('Avto-zaxira: path_provider yo\'q: $e');
+    }
+  }
+
+  /// Eng yangisi birinchi.
+  static Future<List<File>> list() async {
+    final dir = await _dir();
+    final files = dir.listSync().whereType<File>().where((f) => f.path.endsWith('.json')).toList()
+      ..sort((a, b) => b.path.compareTo(a.path));
+    return files;
+  }
+
+  /// `sozlik-auto-2026-10-04.json` → `2026-10-04`.
+  static String dayOf(File f) => p.basenameWithoutExtension(f.path).replaceFirst('sozlik-auto-', '');
 }

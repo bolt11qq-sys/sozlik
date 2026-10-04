@@ -34,8 +34,14 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
         title: const Text('Boshidan boshlash'),
         content: const Text("So'z yangi so'zlar qatoriga qaytadi. Tarix va gaplar saqlanadi."),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Bekor qilish', style: TextStyle(color: c.sec))),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Boshlash', style: TextStyle(color: c.accent))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Bekor qilish', style: TextStyle(color: c.sec)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Boshlash', style: TextStyle(color: c.accent)),
+          ),
         ],
       ),
     );
@@ -76,7 +82,11 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
               children: [
                 TopBar(
                   title: "So'z",
-                  trailing: SquareButton(AppIcons.pencil, label: 'Tahrirlash', onTap: () => push(context, WordEditScreen(word: w))),
+                  trailing: SquareButton(
+                    AppIcons.pencil,
+                    label: 'Tahrirlash',
+                    onTap: () => push(context, WordEditScreen(word: w)),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 AppCard(
@@ -87,8 +97,10 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: Text(w.en,
-                                style: T.text(30, w: FontWeight.w700, color: c.ink, spacing: -0.5, height: 1.15)),
+                            child: Text(
+                              w.en,
+                              style: T.text(30, w: FontWeight.w700, color: c.ink, spacing: -0.5, height: 1.15),
+                            ),
                           ),
                           SpeakButton.word(w, size: 20),
                         ],
@@ -98,7 +110,10 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                         Text(kPosLabels[w.pos] ?? w.pos!, style: T.text(13, color: c.sec)),
                       ],
                       const SizedBox(height: 12),
-                      Text(w.uz, style: T.text(19, w: FontWeight.w700, color: c.accent)),
+                      Text(
+                        w.uz,
+                        style: T.text(19, w: FontWeight.w700, color: c.accent),
+                      ),
                       if (w.synonyms.isNotEmpty) ...[
                         const SizedBox(height: 6),
                         Text('Sinonim: ${w.synonyms.join(', ')}', style: T.text(13, color: c.sec, height: 1.5)),
@@ -144,9 +159,13 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: StatTile(label: 'Bosqich', value: '${w.stage} / 6', color: c.accent)),
+                    Expanded(
+                      child: StatTile(label: 'Bosqich', value: '${w.stage} / 6', color: c.accent),
+                    ),
                     const SizedBox(width: 10),
-                    Expanded(child: StatTile(label: 'Keyingi', value: due)),
+                    Expanded(
+                      child: StatTile(label: 'Keyingi', value: due),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: StatTile(
@@ -158,34 +177,44 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                RowGroup(children: [
-                  RowItem(
-                    leading: IconBox(AppIcons.warning, color: c.red),
-                    title: "Qiyin so'z",
-                    subtitle: 'Alohida mashq ro\'yxatida',
-                    trailing: AppSwitch(label: 'Qiyin', value: w.difficult, onChanged: (v) => app.setDifficult(w.id!, v)),
-                  ),
-                  RowItem(
-                    leading: IconBox(AppIcons.archive, color: c.sec),
-                    title: 'Arxivlash',
-                    subtitle: 'Takrorlashga chiqmaydi, tarix saqlanadi',
-                    trailing: AppSwitch(label: 'Arxiv', value: w.isArchived, onChanged: (v) => app.setArchived(w.id!, v)),
-                  ),
-                  RowItem(
-                    leading: IconBox(AppIcons.message, color: c.violet),
-                    title: 'Gap yozish',
-                    subtitle: "Shu so'z bilan o'z gapingizni tuzing",
-                    trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
-                    onTap: () => push(context, SentenceScreen(wordId: w.id)),
-                  ),
-                  RowItem(
-                    leading: IconBox(AppIcons.reset, color: c.amber),
-                    title: 'Boshidan boshlash',
-                    subtitle: 'Bosqich 0 ga qaytadi',
-                    trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
-                    onTap: w.isNew ? null : () => _resetProgress(w),
-                  ),
-                ]),
+                RowGroup(
+                  children: [
+                    RowItem(
+                      leading: IconBox(AppIcons.warning, color: c.red),
+                      title: "Qiyin so'z",
+                      subtitle: 'Alohida mashq ro\'yxatida',
+                      trailing: AppSwitch(
+                        label: 'Qiyin',
+                        value: w.difficult,
+                        onChanged: (v) => app.setDifficult(w.id!, v),
+                      ),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.archive, color: c.sec),
+                      title: 'Arxivlash',
+                      subtitle: 'Takrorlashga chiqmaydi, tarix saqlanadi',
+                      trailing: AppSwitch(
+                        label: 'Arxiv',
+                        value: w.isArchived,
+                        onChanged: (v) => app.setArchived(w.id!, v),
+                      ),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.message, color: c.violet),
+                      title: 'Gap yozish',
+                      subtitle: "Shu so'z bilan o'z gapingizni tuzing",
+                      trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      onTap: () => push(context, SentenceScreen(wordId: w.id)),
+                    ),
+                    RowItem(
+                      leading: IconBox(AppIcons.reset, color: c.amber),
+                      title: 'Boshidan boshlash',
+                      subtitle: 'Bosqich 0 ga qaytadi',
+                      trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      onTap: w.isNew ? null : () => _resetProgress(w),
+                    ),
+                  ],
+                ),
                 if (sentences.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   const SectionLabel('Yozilgan gaplar'),
@@ -219,7 +248,9 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                     if (logs.isEmpty) {
                       return AppCard(
                         child: Text(
-                          snap.connectionState == ConnectionState.done ? "Hali takrorlanmagan. Qo'shilgan: ${formatMoment(w.createdAt)}" : '',
+                          snap.connectionState == ConnectionState.done
+                              ? "Hali takrorlanmagan. Qo'shilgan: ${formatMoment(w.createdAt)}"
+                              : '',
                           style: T.text(13, color: c.sec),
                         ),
                       );
@@ -264,7 +295,9 @@ class _LogRow extends StatelessWidget {
         : (log.stageBefore == log.stageAfter ? '${log.stageAfter}-bosqich' : '${log.stageBefore} → ${log.stageAfter}');
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(border: last ? null : Border(bottom: BorderSide(color: c.line))),
+      decoration: BoxDecoration(
+        border: last ? null : Border(bottom: BorderSide(color: c.line)),
+      ),
       child: Row(
         children: [
           IconBox(log.result ? AppIcons.check : AppIcons.close, color: color, size: 30, iconSize: 15, radius: 9),
@@ -283,7 +316,10 @@ class _LogRow extends StatelessWidget {
               ],
             ),
           ),
-          Text(stage, style: T.text(11, w: FontWeight.w600, color: c.sec)),
+          Text(
+            stage,
+            style: T.text(11, w: FontWeight.w600, color: c.sec),
+          ),
         ],
       ),
     );

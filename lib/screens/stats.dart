@@ -70,7 +70,9 @@ class _StatsScreenState extends State<StatsScreen> {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text('Statistika', style: T.display(22, color: c.ink))),
+                      Expanded(
+                        child: Text('Statistika', style: T.display(22, color: c.ink)),
+                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                         decoration: BoxDecoration(color: c.streakBg, borderRadius: BorderRadius.circular(999)),
@@ -79,7 +81,10 @@ class _StatsScreenState extends State<StatsScreen> {
                           children: [
                             AppIcon(AppIcons.flame, size: 15, color: c.amber),
                             const SizedBox(width: 6),
-                            Text('${app.streak} kun', style: T.text(13, w: FontWeight.w700, color: c.amber)),
+                            Text(
+                              '${app.streak} kun',
+                              style: T.text(13, w: FontWeight.w700, color: c.amber),
+                            ),
                           ],
                         ),
                       ),
@@ -88,11 +93,17 @@ class _StatsScreenState extends State<StatsScreen> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      Expanded(child: StatTile(label: 'Bugun', value: '${app.todayStat.reviewed}')),
+                      Expanded(
+                        child: StatTile(label: 'Bugun', value: '${app.todayStat.reviewed}'),
+                      ),
                       const SizedBox(width: 10),
-                      Expanded(child: StatTile(label: 'Haftada', value: '$week')),
+                      Expanded(
+                        child: StatTile(label: 'Haftada', value: '$week'),
+                      ),
                       const SizedBox(width: 10),
-                      Expanded(child: StatTile(label: "To'g'ri", value: pct == null ? '—' : '$pct%', color: c.accent)),
+                      Expanded(
+                        child: StatTile(label: "To'g'ri", value: pct == null ? '—' : '$pct%', color: c.accent),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -102,7 +113,10 @@ class _StatsScreenState extends State<StatsScreen> {
                       children: [
                         Row(
                           children: [
-                            Text("Kunlar bo'yicha", style: T.text(14, w: FontWeight.w700, color: c.ink)),
+                            Text(
+                              "Kunlar bo'yicha",
+                              style: T.text(14, w: FontWeight.w700, color: c.ink),
+                            ),
                             const Spacer(),
                             _Segment(
                               value: _range,
@@ -133,11 +147,40 @@ class _StatsScreenState extends State<StatsScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  Builder(
+                    builder: (context) {
+                      final hm = app.lastDays(105);
+                      final active = hm.where((d) => d.$2 > 0).length;
+                      return AppCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'Faollik',
+                                  style: T.text(14, w: FontWeight.w700, color: c.ink),
+                                ),
+                                Text('15 haftada $active kun', style: T.text(12, color: c.sec)),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Heatmap(days: hm, weekdayOfFirst: parseDay(hm.first.$1).weekday),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
                   AppCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Text('Bosqichlar', style: T.text(14, w: FontWeight.w700, color: c.ink)),
+                        Text(
+                          'Bosqichlar',
+                          style: T.text(14, w: FontWeight.w700, color: c.ink),
+                        ),
                         const SizedBox(height: 12),
                         DistributionRow(label: 'Yangi', value: buckets.fresh, total: buckets.total, color: c.orange),
                         const SizedBox(height: 12),
@@ -153,7 +196,10 @@ class _StatsScreenState extends State<StatsScreen> {
                   RowGroup(
                     header: Row(
                       children: [
-                        Text("Rejimlar bo'yicha", style: T.text(14, w: FontWeight.w700, color: c.ink)),
+                        Text(
+                          "Rejimlar bo'yicha",
+                          style: T.text(14, w: FontWeight.w700, color: c.ink),
+                        ),
                         const Spacer(),
                         Text('30 kun', style: T.text(12, color: c.sec)),
                       ],
@@ -167,17 +213,16 @@ class _StatsScreenState extends State<StatsScreen> {
                             leading: IconBox(modeIcon(m), color: modeColor(c, m)),
                             title: m.label,
                             subtitle: v.$1 == 0 ? "hali javob yo'q" : "${v.$1} ta · $p% to'g'ri",
-                            trailing: Text(p == null ? '—' : '$p%',
-                                style: T.text(13, w: FontWeight.w700, color: modeColor(c, m))),
+                            trailing: Text(
+                              p == null ? '—' : '$p%',
+                              style: T.text(13, w: FontWeight.w700, color: modeColor(c, m)),
+                            ),
                           );
                         }(),
                     ],
                   ),
                   if (data != null) ...[
-                    if (_insight(data) case final text?) ...[
-                      const SizedBox(height: 16),
-                      HintCard(text: text),
-                    ],
+                    if (_insight(data) case final text?) ...[const SizedBox(height: 16), HintCard(text: text)],
                   ],
                   const SizedBox(height: 16),
                   AppCard(
@@ -187,7 +232,10 @@ class _StatsScreenState extends State<StatsScreen> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Kelgusi 7 kun', style: T.text(14, w: FontWeight.w700, color: c.ink)),
+                            Text(
+                              'Kelgusi 7 kun',
+                              style: T.text(14, w: FontWeight.w700, color: c.ink),
+                            ),
                             Text('kunlik chegara bilan', style: T.text(12, color: c.sec)),
                           ],
                         ),
@@ -265,12 +313,11 @@ class _Segment extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 160),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: o == value ? c.card : null,
-                  borderRadius: BorderRadius.circular(8),
+                decoration: BoxDecoration(color: o == value ? c.card : null, borderRadius: BorderRadius.circular(8)),
+                child: Text(
+                  label(o),
+                  style: T.text(11, w: FontWeight.w600, color: o == value ? c.ink : c.sec),
                 ),
-                child: Text(label(o),
-                    style: T.text(11, w: FontWeight.w600, color: o == value ? c.ink : c.sec)),
               ),
             ),
         ],

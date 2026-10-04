@@ -142,12 +142,7 @@ QueuePlan buildQueue({
   final reviews = [...a, ...b];
   final newIds = fresh.take(takeNew).map((w) => w.id!).toList();
 
-  return QueuePlan(
-    ids: interleave(reviews, newIds),
-    overdue: takeOver,
-    dueToday: takeToday,
-    fresh: takeNew,
-  );
+  return QueuePlan(ids: interleave(reviews, newIds), overdue: takeOver, dueToday: takeToday, fresh: takeNew);
 }
 
 /// Yangi so'zlarni takrorlashlar orasiga teng taqsimlaydi:
@@ -208,19 +203,15 @@ ReviewMode pickMode({
   if (stage <= 1) {
     preferred = [ReviewMode.recognize];
   } else if (stage <= 3) {
-    preferred = salt.isEven
-        ? [ReviewMode.recognize, ReviewMode.audio]
-        : [ReviewMode.audio, ReviewMode.recognize];
+    preferred = salt.isEven ? [ReviewMode.recognize, ReviewMode.audio] : [ReviewMode.audio, ReviewMode.recognize];
   } else {
-    preferred = salt.isEven
-        ? [ReviewMode.produce, ReviewMode.synonym]
-        : [ReviewMode.synonym, ReviewMode.produce];
+    preferred = salt.isEven ? [ReviewMode.produce, ReviewMode.synonym] : [ReviewMode.synonym, ReviewMode.produce];
   }
   bool feasible(ReviewMode m) => switch (m) {
-        ReviewMode.audio => canAudio,
-        ReviewMode.synonym => canSynonym,
-        _ => true,
-      };
+    ReviewMode.audio => canAudio,
+    ReviewMode.synonym => canSynonym,
+    _ => true,
+  };
   for (final m in preferred) {
     if (enabled.contains(m) && feasible(m)) return m;
   }
@@ -351,10 +342,7 @@ Masked? maskExample(String? example, String word) {
     final last = w[w.length - 1];
     final alts = stems.map(RegExp.escape).join('|');
     const sfx = r'(?:s|es|d|ed|ing|ies|ied|er|ers|est|ly|ment|ments|ness)?';
-    re = RegExp(
-      '\\b(?:(?:$alts)$sfx|${RegExp.escape(w)}${RegExp.escape(last)}(?:ed|ing|er))\\b',
-      caseSensitive: false,
-    );
+    re = RegExp('\\b(?:(?:$alts)$sfx|${RegExp.escape(w)}${RegExp.escape(last)}(?:ed|ing|er))\\b', caseSensitive: false);
   }
   final m = re.firstMatch(example);
   if (m == null) return null;

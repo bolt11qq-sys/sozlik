@@ -33,15 +33,20 @@ class EmptyState extends StatelessWidget {
           else if (icon != null)
             IconBox(icon, color: c.accent, size: 56, iconSize: 26, radius: 16),
           const SizedBox(height: 16),
-          Text(title, textAlign: TextAlign.center, style: T.display(20, color: c.ink)),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: T.display(20, color: c.ink),
+          ),
           const SizedBox(height: 6),
-          Text(text, textAlign: TextAlign.center, style: T.text(13, color: c.sec, height: 1.55)),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: T.text(13, color: c.sec, height: 1.55),
+          ),
           if (actions.isNotEmpty) ...[
             const SizedBox(height: 18),
-            for (var i = 0; i < actions.length; i++) ...[
-              if (i > 0) const SizedBox(height: 10),
-              actions[i],
-            ],
+            for (var i = 0; i < actions.length; i++) ...[if (i > 0) const SizedBox(height: 10), actions[i]],
           ],
         ],
       ),

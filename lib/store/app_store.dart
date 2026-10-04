@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
@@ -12,6 +13,7 @@ import '../models/word.dart';
 import '../services/backup.dart';
 import '../services/importer.dart';
 import '../services/notifier.dart';
+import '../services/widget_sync.dart';
 import '../services/word_audio.dart';
 import '../srs/scheduler.dart';
 import 'settings_store.dart';
@@ -55,6 +57,7 @@ class AppStore extends ChangeNotifier {
   final Map<int, Word> _words = {};
   final Map<int, List<Sentence>> _sentences = {};
   Map<String, int> _reviewedByDay = {};
+  Map<String, int> _newByDay = {};
   DayStat? _todayStat;
   String? _statDay;
   bool loaded = false;
@@ -79,10 +82,30 @@ class AppStore extends ChangeNotifier {
       (_sentences[x.wordId] ??= []).add(x);
     }
     _reviewedByDay = await db.reviewedByDay();
+    _newByDay = {for (final d in await db.dayStatsSince(addDays(today, -30))) d.day: d.newLearned};
     await _loadTodayStat();
     await db.setLastOpenedDay(today);
     loaded = true;
     _changed(reschedule: true);
+  }
+
+  /// Ishga tushgandan keyingi fon ishlari: kunlik avto-zaxira va
+  /// hech bir so'zga tegishli bo'lmagan audio fayllarni tozalash.
+  Future<void> maintenance() async {
+    if (!Platform.isAndroid) return;
+    await AutoBackup.runDaily(today, exportBackup);
+    try {
+      final used = {
+        for (final w in _words.values)
+          if (w.hasAudio) w.audio!,
+      };
+      final dir = await WordAudio.instance.dir();
+      for (final f in dir.listSync().whereType<File>()) {
+        if (!used.contains(f.uri.pathSegments.last)) await f.delete();
+      }
+    } on FileSystemException catch (e) {
+      debugPrint('Audio tozalashda xato: $e');
+    }
   }
 
   Future<void> _loadTodayStat() async {
@@ -219,17 +242,65 @@ class AppStore extends ChangeNotifier {
     return (matched, unmatched);
   }
 
+  // ───────────── ommaviy amallar ─────────────
+
+  Future<void> bulkUpdate(Iterable<int> ids, Word Function(Word) change) async {
+    final now = _now;
+    final list = [
+      for (final id in ids)
+        if (_words[id] != null) change(_words[id]!).copyWith(updatedAt: now),
+    ];
+    await db.updateWords(list);
+    for (final w in list) {
+      _words[w.id!] = w;
+    }
+    _changed(reschedule: true);
+  }
+
+  Future<void> bulkAddTag(Iterable<int> ids, String tag) => bulkUpdate(ids, (w) {
+    if (w.tags.any((t) => t.toLowerCase() == tag.toLowerCase())) return w;
+    return w.copyWith(tags: [...w.tags, tag]);
+  });
+
+  Future<void> bulkDelete(Iterable<int> ids) async {
+    final list = ids.toList();
+    final audios = [for (final id in list) _words[id]?.audio];
+    await db.deleteWords(list);
+    for (final id in list) {
+      _words.remove(id);
+      _sentences.remove(id);
+    }
+    for (final a in audios) {
+      await WordAudio.instance.delete(a);
+    }
+    _reviewedByDay = await db.reviewedByDay();
+    _changed(reschedule: true);
+  }
+
+  // ───────────── imtihon ─────────────
+
+  /// Oxirgi 14 kunda o'rtacha kuniga nechta yangi so'z boshlangan.
+  double get avgNewPerDay {
+    final d = today;
+    var sum = 0;
+    for (var i = 0; i < 14; i++) {
+      sum += _newByDay[addDays(d, -i)] ?? 0;
+    }
+    return sum / 14;
+  }
+
+  /// Imtihongacha qolgan kun (o'tib ketgan bo'lsa — manfiy). Sana yo'q — null.
+  int? get examDaysLeft {
+    final e = s.examDate;
+    if (e == null || !isValidDay(e)) return null;
+    return daysBetween(today, e);
+  }
+
   /// Bosqichni boshidan boshlash (tarix saqlanadi).
   Future<void> resetProgress(int id) async {
     final w = _words[id];
     if (w == null) return;
-    await updateWord(w.copyWith(
-      stage: 0,
-      intervalDays: 0,
-      nextDue: today,
-      clearLastSeen: true,
-      streakCorrect: 0,
-    ));
+    await updateWord(w.copyWith(stage: 0, intervalDays: 0, nextDue: today, clearLastSeen: true, streakCorrect: 0));
     _scheduleReminders();
   }
 
@@ -248,16 +319,18 @@ class AppStore extends ChangeNotifier {
     final list = <Word>[];
     for (final e in entries) {
       if (!existing.add(e.key)) continue;
-      list.add(Word(
-        en: e.en,
-        uz: e.uz,
-        synonyms: e.synonyms,
-        example: e.example,
-        tags: tags,
-        nextDue: today,
-        createdAt: now,
-        updatedAt: now,
-      ));
+      list.add(
+        Word(
+          en: e.en,
+          uz: e.uz,
+          synonyms: e.synonyms,
+          example: e.example,
+          tags: tags,
+          nextDue: today,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
     }
     if (list.isEmpty) return 0;
     await db.insertWords(list);
@@ -314,12 +387,12 @@ class AppStore extends ChangeNotifier {
   }
 
   ReviewMode modeFor(Word w) => pickMode(
-        stage: w.stage,
-        salt: w.correctCount + w.wrongCount,
-        enabled: s.enabledModes,
-        canAudio: canAudio(w),
-        canSynonym: canSynonym(w),
-      );
+    stage: w.stage,
+    salt: w.correctCount + w.wrongCount,
+    enabled: s.enabledModes,
+    canAudio: canAudio(w),
+    canSynonym: canSynonym(w),
+  );
 
   bool canAudio(Word w) => maskExample(w.example, w.en) != null && _words.length >= 4;
   bool canSynonym(Word w) => w.synonyms.isNotEmpty && _words.length >= 4;
@@ -362,7 +435,8 @@ class AppStore extends ChangeNotifier {
     _todayStat = stat;
     final logId = await db.recordAnswer(log: log, word: next, stat: stat);
     _reviewedByDay[d] = stat.reviewed;
-    _changed(reschedule: stat.goalMet != prevStat.goalMet);
+    _newByDay[d] = stat.newLearned;
+    _changed(reschedule: true);
     return AnswerReceipt(logId: logId, previous: prev, previousStat: prevStat);
   }
 
@@ -372,6 +446,7 @@ class AppStore extends ChangeNotifier {
     _todayStat = r.previousStat;
     _statDay = r.previousStat.day;
     _reviewedByDay[r.previousStat.day] = r.previousStat.reviewed;
+    _newByDay[r.previousStat.day] = r.previousStat.newLearned;
     _changed(reschedule: true);
   }
 
@@ -434,9 +509,7 @@ class AppStore extends ChangeNotifier {
   /// Oxirgi [days] kun (bugun oxirgi) — har kun uchun takrorlashlar soni.
   List<(String, int)> lastDays(int days) {
     final d = today;
-    return [
-      for (var i = days - 1; i >= 0; i--) (addDays(d, -i), _reviewedByDay[addDays(d, -i)] ?? 0),
-    ];
+    return [for (var i = days - 1; i >= 0; i--) (addDays(d, -i), _reviewedByDay[addDays(d, -i)] ?? 0)];
   }
 
   Future<List<DayStat>> dayStats(int days) => db.dayStatsSince(addDays(today, -(days - 1)));
@@ -484,6 +557,8 @@ class AppStore extends ChangeNotifier {
 
   String exportAnkiText() => exportAnki(activeWords);
 
+  String exportCsvText() => exportCsv(allWords);
+
   // ───────────── eslatma ─────────────
 
   Timer? _reminderDebounce;
@@ -493,13 +568,25 @@ class AppStore extends ChangeNotifier {
     _reminderDebounce = Timer(const Duration(milliseconds: 800), () {
       if (!loaded) return;
       final v = s;
-      unawaited(Notifier.instance.schedule(
-        enabled: v.reminderOn,
-        hour: v.reminderHour,
-        minute: v.reminderMinute,
-        counts: forecast(),
-        skipToday: todayStat.goalMet || plan.total == 0,
-      ));
+      unawaited(
+        Notifier.instance.schedule(
+          enabled: v.reminderOn,
+          hour: v.reminderHour,
+          minute: v.reminderMinute,
+          counts: forecast(),
+          skipToday: todayStat.goalMet || plan.total == 0,
+        ),
+      );
+      final fc = forecast();
+      unawaited(
+        WidgetSync.update(
+          today: today,
+          dayStartHour: v.dayStartHour,
+          remaining: plan.total,
+          done: doneToday,
+          forecast: [for (var i = 0; i < fc.length; i++) (addDays(today, i), fc[i])],
+        ),
+      );
     });
   }
 

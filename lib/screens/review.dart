@@ -21,11 +21,12 @@ import 'word_edit.dart';
 /// 2–4. Takrorlash — bitta ekran, to'rt rejim. Yuqorida progress va
 /// "Ortga qaytarish". Kartochkada tahrirlash va "qiyin" belgisi.
 class ReviewScreen extends StatefulWidget {
-  const ReviewScreen({super.key, this.kind = SessionKind.daily, this.mode, this.tag});
+  const ReviewScreen({super.key, this.kind = SessionKind.daily, this.mode, this.tag, this.limit});
 
   final SessionKind kind;
   final ReviewMode? mode;
   final String? tag;
+  final int? limit;
 
   @override
   State<ReviewScreen> createState() => _ReviewScreenState();
@@ -37,7 +38,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _store ??= ReviewStore(context.app, kind: widget.kind, forceMode: widget.mode, tag: widget.tag)..start();
+    _store ??= ReviewStore(context.app, kind: widget.kind, forceMode: widget.mode, tag: widget.tag, limit: widget.limit)
+      ..start();
   }
 
   @override
@@ -102,17 +104,17 @@ class _ReviewScreenState extends State<ReviewScreen> {
                     child: !s.started
                         ? _NothingToReview(kind: widget.kind)
                         : s.finished
-                            ? _Summary(store: s, key: const ValueKey('summary'))
-                            : (card == null || w == null)
-                                ? const SizedBox.shrink()
-                                : _CardView(
-                                    key: ValueKey('card-${s.index}-${card.wordId}'),
-                                    store: s,
-                                    card: card,
-                                    word: w,
-                                    onEdit: () => _edit(w),
-                                    onDifficult: () => _toggleDifficult(w),
-                                  ),
+                        ? _Summary(store: s, key: const ValueKey('summary'))
+                        : (card == null || w == null)
+                        ? const SizedBox.shrink()
+                        : _CardView(
+                            key: ValueKey('card-${s.index}-${card.wordId}'),
+                            store: s,
+                            card: card,
+                            word: w,
+                            onEdit: () => _edit(w),
+                            onDifficult: () => _toggleDifficult(w),
+                          ),
                   ),
                 ),
               ],
@@ -157,12 +159,18 @@ class _Header extends StatelessWidget {
               Row(
                 children: [
                   Expanded(
-                    child: Text(label,
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: T.text(12, color: c.sec)),
+                    child: Text(
+                      label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: T.text(12, color: c.sec),
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  Text('${s.total == 0 ? 0 : (s.index + (s.finished ? 0 : 1)).clamp(0, s.total)} / ${s.total}',
-                      style: T.text(12, color: c.sec)),
+                  Text(
+                    '${s.total == 0 ? 0 : (s.index + (s.finished ? 0 : 1)).clamp(0, s.total)} / ${s.total}',
+                    style: T.text(12, color: c.sec),
+                  ),
                 ],
               ),
               const SizedBox(height: 6),
@@ -307,23 +315,23 @@ class _CardViewState extends State<_CardView> {
   // ───── umumiy bo'laklar ─────
 
   Widget _cardTop(AppColors c, String caps) => Row(
-        children: [
-          Expanded(child: Text(caps.toUpperCase(), style: T.caps(c.sec))),
-          _MiniIcon(AppIcons.pencil, label: 'Tahrirlash', color: c.sec, onTap: widget.onEdit),
-          const SizedBox(width: 4),
-          _MiniIcon(
-            AppIcons.warning,
-            label: w.difficult ? "Qiyin belgisini olish" : 'Qiyin deb belgilash',
-            color: w.difficult ? c.red : c.sec,
-            onTap: widget.onDifficult,
-          ),
-        ],
-      );
+    children: [
+      Expanded(child: Text(caps.toUpperCase(), style: T.caps(c.sec))),
+      _MiniIcon(AppIcons.pencil, label: 'Tahrirlash', color: c.sec, onTap: widget.onEdit),
+      const SizedBox(width: 4),
+      _MiniIcon(
+        AppIcons.warning,
+        label: w.difficult ? "Qiyin belgisini olish" : 'Qiyin deb belgilash',
+        color: w.difficult ? c.red : c.sec,
+        onTap: widget.onDifficult,
+      ),
+    ],
+  );
 
   Widget _divider(AppColors c) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Divider(height: 1, thickness: 1, color: c.line),
-      );
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Divider(height: 1, thickness: 1, color: c.line),
+  );
 
   Widget _exampleBox(AppColors c, {bool showUz = true}) {
     if (!w.hasExample) {
@@ -337,8 +345,10 @@ class _CardViewState extends State<_CardView> {
             AppIcon(AppIcons.info, size: 18, color: c.amber),
             const SizedBox(width: 10),
             Expanded(
-              child: Text("Misol gap yo'q. So'z gap ichida yaxshiroq eslab qolinadi — qo'shish uchun bosing.",
-                  style: T.text(12.5, color: c.ink, height: 1.45)),
+              child: Text(
+                "Misol gap yo'q. So'z gap ichida yaxshiroq eslab qolinadi — qo'shish uchun bosing.",
+                style: T.text(12.5, color: c.ink, height: 1.45),
+              ),
             ),
           ],
         ),
@@ -403,25 +413,26 @@ class _CardViewState extends State<_CardView> {
     }
     return Padding(
       padding: const EdgeInsets.only(top: 14),
-      child: Text(text, textAlign: TextAlign.center, style: T.text(12, color: c.sec)),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: T.text(12, color: c.sec),
+      ),
     );
   }
 
   List<Widget> _section(AppColors c, List<Widget> children, {double gap = 10}) => [
-        Container(
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(color: c.card, borderRadius: BorderRadius.circular(18)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (var i = 0; i < children.length; i++) ...[
-                if (i > 0) SizedBox(height: gap),
-                children[i],
-              ],
-            ],
-          ),
-        ),
-      ];
+    Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(color: c.card, borderRadius: BorderRadius.circular(18)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < children.length; i++) ...[if (i > 0) SizedBox(height: gap), children[i]],
+        ],
+      ),
+    ),
+  ];
 
   // ───── Tanish ─────
 
@@ -434,7 +445,10 @@ class _CardViewState extends State<_CardView> {
         Row(
           children: [
             Expanded(
-              child: Text(w.en, style: T.text(32, w: FontWeight.w700, color: c.ink, spacing: -0.5, height: 1.15)),
+              child: Text(
+                w.en,
+                style: T.text(32, w: FontWeight.w700, color: c.ink, spacing: -0.5, height: 1.15),
+              ),
             ),
             SpeakButton.word(w, size: 20),
           ],
@@ -457,7 +471,10 @@ class _CardViewState extends State<_CardView> {
           secondChild: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(w.uz, style: T.text(20, w: FontWeight.w700, color: failed ? c.red : c.accent)),
+              Text(
+                w.uz,
+                style: T.text(20, w: FontWeight.w700, color: failed ? c.red : c.accent),
+              ),
               if (w.synonyms.isNotEmpty) ...[
                 const SizedBox(height: 8),
                 Text('Sinonim: ${w.synonyms.join(', ')}', style: T.text(13, color: c.sec, height: 1.5)),
@@ -488,7 +505,10 @@ class _CardViewState extends State<_CardView> {
     return [
       ..._section(c, [
         _cardTop(c, "O'zbekcha"),
-        Text(w.uz, style: T.text(28, w: FontWeight.w700, color: c.ink, height: 1.2)),
+        Text(
+          w.uz,
+          style: T.text(28, w: FontWeight.w700, color: c.ink, height: 1.2),
+        ),
         if (masked != null && !answered)
           Text(masked.withPlaceholder('___'), style: T.text(13, color: c.sec, height: 1.5))
         else if (!answered && (w.exampleUz ?? '').isNotEmpty)
@@ -553,7 +573,10 @@ class _CardViewState extends State<_CardView> {
     final correct = s.correctOption(w, widget.card);
     return [
       ..._section(c, [
-        Align(alignment: Alignment.centerRight, child: _MiniIcon(AppIcons.pencil, label: 'Tahrirlash', color: c.sec, onTap: widget.onEdit)),
+        Align(
+          alignment: Alignment.centerRight,
+          child: _MiniIcon(AppIcons.pencil, label: 'Tahrirlash', color: c.sec, onTap: widget.onEdit),
+        ),
         Center(
           child: ValueListenableBuilder<String?>(
             valueListenable: Tts.instance.speaking,
@@ -587,7 +610,11 @@ class _CardViewState extends State<_CardView> {
             },
           ),
         ),
-        Text("Gapni tinglang va so'zni toping", textAlign: TextAlign.center, style: T.text(13, color: c.sec)),
+        Text(
+          "Gapni tinglang va so'zni toping",
+          textAlign: TextAlign.center,
+          style: T.text(13, color: c.sec),
+        ),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -599,28 +626,38 @@ class _CardViewState extends State<_CardView> {
         _divider(c),
         if (masked != null)
           Text.rich(
-            TextSpan(style: T.text(14, color: c.sec, height: 1.75), children: [
-              TextSpan(text: masked.before),
-              WidgetSpan(
-                alignment: PlaceholderAlignment.middle,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: c.soft(answered ? (s.lastCorrect == true ? c.accent : c.red) : c.accent),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    answered ? masked.hidden : '? ? ?',
-                    style: T.text(14, w: FontWeight.w700, color: answered && s.lastCorrect == false ? c.red : c.accent),
+            TextSpan(
+              style: T.text(14, color: c.sec, height: 1.75),
+              children: [
+                TextSpan(text: masked.before),
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: c.soft(answered ? (s.lastCorrect == true ? c.accent : c.red) : c.accent),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      answered ? masked.hidden : '? ? ?',
+                      style: T.text(
+                        14,
+                        w: FontWeight.w700,
+                        color: answered && s.lastCorrect == false ? c.red : c.accent,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              TextSpan(text: masked.after),
-            ]),
+                TextSpan(text: masked.after),
+              ],
+            ),
           ),
         if (answered) ...[
           if ((w.exampleUz ?? '').isNotEmpty) Text(w.exampleUz!, style: T.text(12, color: c.sec, height: 1.45)),
-          Text('${w.en} — ${w.uz}', style: T.text(15, w: FontWeight.w700, color: c.ink)),
+          Text(
+            '${w.en} — ${w.uz}',
+            style: T.text(15, w: FontWeight.w700, color: c.ink),
+          ),
         ],
       ], gap: 14),
       const SizedBox(height: 16),
@@ -628,8 +665,11 @@ class _CardViewState extends State<_CardView> {
       if (!answered)
         Padding(
           padding: const EdgeInsets.only(top: 14),
-          child: Text("Bu rejim nutqni tushunish uchun: so'z gap ichida, tezlikda aytiladi",
-              textAlign: TextAlign.center, style: T.text(12, color: c.sec, height: 1.5)),
+          child: Text(
+            "Bu rejim nutqni tushunish uchun: so'z gap ichida, tezlikda aytiladi",
+            textAlign: TextAlign.center,
+            style: T.text(12, color: c.sec, height: 1.5),
+          ),
         )
       else
         _nextInfo(c),
@@ -646,7 +686,12 @@ class _CardViewState extends State<_CardView> {
         _cardTop(c, 'Ma\'nodoshini toping'),
         Row(
           children: [
-            Expanded(child: Text(w.en, style: T.text(30, w: FontWeight.w700, color: c.ink, spacing: -0.5))),
+            Expanded(
+              child: Text(
+                w.en,
+                style: T.text(30, w: FontWeight.w700, color: c.ink, spacing: -0.5),
+              ),
+            ),
             SpeakButton.word(w, size: 20),
           ],
         ),
@@ -659,7 +704,10 @@ class _CardViewState extends State<_CardView> {
           ),
         if (answered) ...[
           _divider(c),
-          Text(w.uz, style: T.text(18, w: FontWeight.w700, color: c.accent)),
+          Text(
+            w.uz,
+            style: T.text(18, w: FontWeight.w700, color: c.accent),
+          ),
           Text('Barcha sinonimlar: ${w.synonyms.join(', ')}', style: T.text(13, color: c.sec, height: 1.5)),
         ],
       ]),
@@ -685,58 +733,66 @@ class _Options extends StatelessWidget {
     return Column(
       children: [
         for (final o in options) ...[
-          Builder(builder: (context) {
-            final isCorrect = Word.normalizeKey(o) == Word.normalizeKey(correct);
-            final isChosen = store.chosen == o;
-            final Color border;
-            Color? bg;
-            Color fg = c.ink;
-            AppIcons? icon;
-            if (answered && isCorrect) {
-              border = c.accent;
-              bg = c.soft(c.accent);
-              fg = c.accent;
-              icon = AppIcons.check;
-            } else if (answered && isChosen) {
-              border = c.red;
-              bg = c.soft(c.red);
-              fg = c.red;
-              icon = AppIcons.close;
-            } else {
-              border = c.line;
-            }
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: Pressable(
-                onTap: answered
-                    ? null
-                    : () {
-                        HapticFeedback.selectionClick();
-                        store.choose(o);
-                      },
-                color: bg ?? c.card,
-                radius: 15,
-                border: Border.all(color: border, width: answered && (isCorrect || isChosen) ? 1.6 : 1),
-                child: SizedBox(
-                  height: 54,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 18),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(o,
+          Builder(
+            builder: (context) {
+              final isCorrect = Word.normalizeKey(o) == Word.normalizeKey(correct);
+              final isChosen = store.chosen == o;
+              final Color border;
+              Color? bg;
+              Color fg = c.ink;
+              AppIcons? icon;
+              if (answered && isCorrect) {
+                border = c.accent;
+                bg = c.soft(c.accent);
+                fg = c.accent;
+                icon = AppIcons.check;
+              } else if (answered && isChosen) {
+                border = c.red;
+                bg = c.soft(c.red);
+                fg = c.red;
+                icon = AppIcons.close;
+              } else {
+                border = c.line;
+              }
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Pressable(
+                  onTap: answered
+                      ? null
+                      : () {
+                          HapticFeedback.selectionClick();
+                          store.choose(o);
+                        },
+                  color: bg ?? c.card,
+                  radius: 15,
+                  border: Border.all(color: border, width: answered && (isCorrect || isChosen) ? 1.6 : 1),
+                  child: SizedBox(
+                    height: 54,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              o,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: T.text(16, w: FontWeight.w600, color: answered && !isCorrect && !isChosen ? c.sec : fg)),
-                        ),
-                        if (icon != null) AppIcon(icon, size: 19, color: fg, stroke: 2.2),
-                      ],
+                              style: T.text(
+                                16,
+                                w: FontWeight.w600,
+                                color: answered && !isCorrect && !isChosen ? c.sec : fg,
+                              ),
+                            ),
+                          ),
+                          if (icon != null) AppIcon(icon, size: 19, color: fg, stroke: 2.2),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          }),
+              );
+            },
+          ),
         ],
       ],
     );
@@ -768,25 +824,38 @@ class _Feedback extends StatelessWidget {
       case Verdict.almost:
         final target = check.expected;
         final marks = diffMarks(target, input ?? '');
-        text = Text.rich(TextSpan(style: T.text(13, color: c.ink, height: 1.45), children: [
-          const TextSpan(text: "Deyarli to'g'ri. To'g'ri yozilishi: "),
-          for (var i = 0; i < target.length; i++)
-            TextSpan(
-              text: target[i],
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: marks[i] ? c.amber : c.ink,
-                decoration: marks[i] ? TextDecoration.underline : null,
-                decorationColor: c.amber,
-                decorationThickness: 2,
-              ),
-            ),
-        ]));
+        text = Text.rich(
+          TextSpan(
+            style: T.text(13, color: c.ink, height: 1.45),
+            children: [
+              const TextSpan(text: "Deyarli to'g'ri. To'g'ri yozilishi: "),
+              for (var i = 0; i < target.length; i++)
+                TextSpan(
+                  text: target[i],
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: marks[i] ? c.amber : c.ink,
+                    decoration: marks[i] ? TextDecoration.underline : null,
+                    decorationColor: c.amber,
+                    decorationThickness: 2,
+                  ),
+                ),
+            ],
+          ),
+        );
       case Verdict.wrong:
-        text = Text.rich(TextSpan(style: T.text(13, color: c.ink, height: 1.45), children: [
-          TextSpan(text: input == null ? "Javob: " : "Noto'g'ri. To'g'ri javob: "),
-          TextSpan(text: word.en, style: const TextStyle(fontWeight: FontWeight.w700)),
-        ]));
+        text = Text.rich(
+          TextSpan(
+            style: T.text(13, color: c.ink, height: 1.45),
+            children: [
+              TextSpan(text: input == null ? "Javob: " : "Noto'g'ri. To'g'ri javob: "),
+              TextSpan(
+                text: word.en,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+        );
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
@@ -830,7 +899,10 @@ class _ListenRow extends StatelessWidget {
                     children: [
                       AppIcon(AppIcons.speaker, size: 18, color: on ? c.accent : c.ink),
                       const SizedBox(width: 8),
-                      Text('Tinglash', style: T.text(13, w: FontWeight.w600, color: on ? c.accent : c.ink)),
+                      Text(
+                        'Tinglash',
+                        style: T.text(13, w: FontWeight.w600, color: on ? c.accent : c.ink),
+                      ),
                     ],
                   ),
                 ),
@@ -851,7 +923,10 @@ class _ListenRow extends StatelessWidget {
                   children: [
                     AppIcon(AppIcons.slow, size: 17, color: c.sec),
                     const SizedBox(width: 5),
-                    Text('0.75', style: T.text(12, w: FontWeight.w600, color: c.sec)),
+                    Text(
+                      '0.75',
+                      style: T.text(12, w: FontWeight.w600, color: c.sec),
+                    ),
                   ],
                 ),
               ),
@@ -884,7 +959,10 @@ class _SmallButton extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[AppIcon(icon!, size: 16, color: c.ink), const SizedBox(width: 6)],
-          Text(label, style: T.text(12, w: FontWeight.w600, color: muted ? c.sec : c.ink)),
+          Text(
+            label,
+            style: T.text(12, w: FontWeight.w600, color: muted ? c.sec : c.ink),
+          ),
         ],
       ),
     );
@@ -901,12 +979,12 @@ class _MiniIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => IconButton(
-        tooltip: label,
-        onPressed: onTap,
-        visualDensity: VisualDensity.compact,
-        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-        icon: AppIcon(icon, size: 17, color: color),
-      );
+    tooltip: label,
+    onPressed: onTap,
+    visualDensity: VisualDensity.compact,
+    constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+    icon: AppIcon(icon, size: 17, color: color),
+  );
 }
 
 // ───────────────────────────── Bo'sh / yakun ─────────────────────────────
@@ -969,8 +1047,8 @@ class _Summary extends StatelessWidget {
                     Text(
                       daily
                           ? (left == 0
-                              ? "Bugungi reja to'liq bajarildi. Ertaga $tomorrow ta so'z kutadi."
-                              : "Bugun yana $left ta so'z qoldi.")
+                                ? "Bugungi reja to'liq bajarildi. Ertaga $tomorrow ta so'z kutadi."
+                                : "Bugun yana $left ta so'z qoldi.")
                           : "Mashq natijalari tarixga yozildi. Takrorlash jadvali o'zgarmadi.",
                       textAlign: TextAlign.center,
                       style: T.text(13, color: c.sec, height: 1.55),
@@ -981,35 +1059,43 @@ class _Summary extends StatelessWidget {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: StatTile(label: "To'g'ri", value: '${store.correctCount}', color: c.accent)),
+                  Expanded(
+                    child: StatTile(label: "To'g'ri", value: '${store.correctCount}', color: c.accent),
+                  ),
                   const SizedBox(width: 10),
-                  Expanded(child: StatTile(label: 'Xato', value: '${store.wrongCount}', color: c.red)),
+                  Expanded(
+                    child: StatTile(label: 'Xato', value: '${store.wrongCount}', color: c.red),
+                  ),
                   const SizedBox(width: 10),
-                  Expanded(child: StatTile(label: 'Aniqlik', value: '$pct%')),
+                  Expanded(
+                    child: StatTile(label: 'Aniqlik', value: '$pct%'),
+                  ),
                 ],
               ),
               if (store.wrongCount > 0) ...[
                 const SizedBox(height: 12),
                 const HintCard(
                   icon: AppIcons.info,
-                  text: "Xato qilingan so'zlar ertaga yoki bir necha kundan keyin qaytadi — bosqichi bittaga tushdi, "
+                  text:
+                      "Xato qilingan so'zlar ertaga yoki bir necha kundan keyin qaytadi — bosqichi bittaga tushdi, "
                       "boshiga qaytmadi.",
                 ),
               ],
             ],
           ),
         ),
-        BottomBar(children: [
-          BigButton(label: 'Bosh sahifa', kind: ButtonKind.secondary, onTap: () => Navigator.of(context).pop()),
-          if (daily && left > 0)
-            BigButton(
-              label: 'Davom etish',
-              icon: AppIcons.play,
-              onTap: () => Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const ReviewScreen()),
+        BottomBar(
+          children: [
+            BigButton(label: 'Bosh sahifa', kind: ButtonKind.secondary, onTap: () => Navigator.of(context).pop()),
+            if (daily && left > 0)
+              BigButton(
+                label: 'Davom etish',
+                icon: AppIcons.play,
+                onTap: () =>
+                    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const ReviewScreen())),
               ),
-            ),
-        ]),
+          ],
+        ),
       ],
     );
   }

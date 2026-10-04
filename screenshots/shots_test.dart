@@ -35,7 +35,8 @@ Future<void> loadFonts() async {
   }
   // Monospace va zaxira shrift sifatida Onest.
   for (final fam in ['monospace', 'Roboto']) {
-    final loader = FontLoader(fam)..addFont(Future.value(ByteData.view(File('assets/fonts/Onest.ttf').readAsBytesSync().buffer)));
+    final loader = FontLoader(fam)
+      ..addFont(Future.value(ByteData.view(File('assets/fonts/Onest.ttf').readAsBytesSync().buffer)));
     await loader.load();
   }
 }
@@ -45,7 +46,7 @@ Future<AppStore> makeStore() async {
   final settings = SettingsStore(db, null);
   final app = AppStore(db, settings);
   await app.load();
-  await settings.update(settings.value.copyWith(reminderOn: false));
+  await settings.update(settings.value.copyWith(reminderOn: false, examDate: addDays(app.today, 72)));
   await app.addSeedWords();
   final today = app.today;
   final words = app.allWords.toList();
@@ -55,18 +56,20 @@ Future<AppStore> makeStore() async {
     if (i < 12) continue; // yangi qoladi
     final stage = 1 + (i % 6);
     final due = i % 3 == 0 ? addDays(today, -(i % 5)) : (i % 3 == 1 ? today : addDays(today, i % 9 + 1));
-    await db.updateWord(w.copyWith(
-      stage: stage,
-      intervalDays: intervalFor(stage),
-      nextDue: due,
-      lastSeen: addDays(today, -3),
-      correctCount: 3 + i % 7,
-      wrongCount: i % 4 == 0 ? 3 + i % 3 : i % 3,
-      streakCorrect: i % 4,
-      difficult: i % 4 == 0,
-      pos: ['noun', 'verb', 'adj', 'adv'][i % 4],
-      exampleUz: i == 13 ? "Bu loyiha juda katta ahamiyatga ega." : null,
-    ));
+    await db.updateWord(
+      w.copyWith(
+        stage: stage,
+        intervalDays: intervalFor(stage),
+        nextDue: due,
+        lastSeen: addDays(today, -3),
+        correctCount: 3 + i % 7,
+        wrongCount: i % 4 == 0 ? 3 + i % 3 : i % 3,
+        streakCorrect: i % 4,
+        difficult: i % 4 == 0,
+        pos: ['noun', 'verb', 'adj', 'adv'][i % 4],
+        exampleUz: i == 13 ? "Bu loyiha juda katta ahamiyatga ega." : null,
+      ),
+    );
   }
   for (var d = 1; d <= 20; d++) {
     final day = addDays(today, -d);
@@ -74,16 +77,19 @@ Future<AppStore> makeStore() async {
     await db.saveDayStat(DayStat(day: day, reviewed: n, correct: (n * 0.86).round(), goalMet: true));
     for (var k = 0; k < 6; k++) {
       final w = words[(d * 7 + k) % words.length];
-      await db.db.insert('review_logs', ReviewLog(
-        wordId: w.id!,
-        at: DateTime.now().subtract(Duration(days: d, minutes: k * 3)).toUtc().millisecondsSinceEpoch,
-        day: day,
-        mode: ReviewMode.values[(d + k) % 4],
-        result: (d + k) % 5 != 0 && ((d + k) % 4 != 3 || k.isEven),
-        answerText: w.en,
-        stageBefore: 2,
-        stageAfter: 3,
-      ).toMap());
+      await db.db.insert(
+        'review_logs',
+        ReviewLog(
+          wordId: w.id!,
+          at: DateTime.now().subtract(Duration(days: d, minutes: k * 3)).toUtc().millisecondsSinceEpoch,
+          day: day,
+          mode: ReviewMode.values[(d + k) % 4],
+          result: (d + k) % 5 != 0 && ((d + k) % 4 != 3 || k.isEven),
+          answerText: w.en,
+          stageBefore: 2,
+          stageAfter: 3,
+        ).toMap(),
+      );
     }
   }
   await app.load();
@@ -97,25 +103,34 @@ void main() {
   final dir = Directory('screenshots/out')..createSync(recursive: true);
   sqfliteFfiInit();
 
-  Future<void> shot(WidgetTester tester, AppStore app, Widget page, String name,
-      {bool dark = false, Future<void> Function(WidgetTester)? act, double height = 844}) async {
+  Future<void> shot(
+    WidgetTester tester,
+    AppStore app,
+    Widget page,
+    String name, {
+    bool dark = false,
+    Future<void> Function(WidgetTester)? act,
+    double height = 844,
+  }) async {
     tester.view.physicalSize = Size(390 * 2, height * 2);
     tester.view.devicePixelRatio = 2;
     final key = GlobalKey();
-    await tester.pumpWidget(RepaintBoundary(
-      key: key,
-      child: Scope(
-        app: app,
-        child: MaterialApp(
-          debugShowCheckedModeBanner: false,
-          theme: buildTheme(dark ? AppColors.dark : AppColors.light),
-          locale: const Locale('uz'),
-          supportedLocales: const [Locale('uz')],
-          localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          home: page,
+    await tester.pumpWidget(
+      RepaintBoundary(
+        key: key,
+        child: Scope(
+          app: app,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: buildTheme(dark ? AppColors.dark : AppColors.light),
+            locale: const Locale('uz'),
+            supportedLocales: const [Locale('uz')],
+            localizationsDelegates: GlobalMaterialLocalizations.delegates,
+            home: page,
+          ),
         ),
       ),
-    ));
+    );
     for (var i = 0; i < 5; i++) {
       await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 60)));
       await tester.pump(const Duration(milliseconds: 300));
@@ -144,36 +159,85 @@ void main() {
 
     await shot(tester, app, const Shell(), '01_home');
     await shot(tester, app, const Shell(), '01_home_dark', dark: true);
-    await shot(tester, app, const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.recognize), '02_review_recognize',
-        act: (t) async => t.tap(find.text("Ko'rsatish")));
-    await shot(tester, app, const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.produce), '03_review_write',
-        act: (t) async {
-      final w = app.word(ReviewStoreProbe.firstId(app, ReviewMode.produce))!;
-      await t.enterText(find.byType(TextField), '${w.en.substring(0, w.en.length - 1)}x');
-      await t.pump();
-      await t.tap(find.text('Tekshirish'));
-    });
+    await shot(
+      tester,
+      app,
+      const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.recognize),
+      '02_review_recognize',
+      act: (t) async => t.tap(find.text("Ko'rsatish")),
+    );
+    await shot(
+      tester,
+      app,
+      const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.produce),
+      '03_review_write',
+      act: (t) async {
+        final w = app.word(ReviewStoreProbe.firstId(app, ReviewMode.produce))!;
+        await t.enterText(find.byType(TextField), '${w.en.substring(0, w.en.length - 1)}x');
+        await t.pump();
+        await t.tap(find.text('Tekshirish'));
+      },
+    );
     await shot(tester, app, const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.audio), '04_review_audio');
-    await shot(tester, app, const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.synonym), '04b_review_synonym');
+    await shot(
+      tester,
+      app,
+      const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.synonym),
+      '04b_review_synonym',
+    );
     await shot(tester, app, const Shell(), '05_words', act: (t) async => t.tap(find.text("So'zlar").last));
-    await shot(tester, app, WordEditScreen(word: words[13]), '06_word_edit', height: 1150);
-    await shot(tester, app, const ImportScreen(), '07_import', act: (t) async {
-      await t.enterText(find.byType(TextField).first,
-          'compulsory :: majburiy\nnovel :: roman :: book :: She wrote a novel.\nvivid :: yorqin\nbad line');
+    await shot(tester, app, const Shell(), '05b_words_select', act: (t) async {
+      await t.tap(find.text("So'zlar").last);
+      await t.pump(const Duration(milliseconds: 400));
+      await t.longPress(find.text('contribute'));
       await t.pump();
-      await t.tap(find.text('Tekshirish'));
+      await t.tap(find.text('challenge'));
     });
-    await shot(tester, app, const Shell(), '08_stats', act: (t) async => t.tap(find.text('Statistika').last), height: 1300);
-    await shot(tester, app, const SettingsScreen(), '09_settings', height: 1250);
+    await shot(tester, app, WordEditScreen(word: words[13]), '06_word_edit', height: 1150);
+    await shot(
+      tester,
+      app,
+      const ImportScreen(),
+      '07_import',
+      act: (t) async {
+        await t.enterText(
+          find.byType(TextField).first,
+          'compulsory :: majburiy\nnovel :: roman :: book :: She wrote a novel.\nvivid :: yorqin\nbad line',
+        );
+        await t.pump();
+        await t.tap(find.text('Tekshirish'));
+      },
+    );
+    await shot(
+      tester,
+      app,
+      const Shell(),
+      '08_stats',
+      act: (t) async => t.tap(find.text('Statistika').last),
+      height: 1300,
+    );
+    await shot(tester, app, const SettingsScreen(), '09_settings', height: 1650);
     await shot(tester, app, const HardScreen(), '10_hard');
     await shot(tester, app, WordDetailScreen(wordId: words[13].id!), '11_detail', height: 1300);
     await shot(tester, app, const SentenceScreen(), '12_sentence');
-    await shot(tester, app, const Shell(), '13_stats_dark', dark: true, act: (t) async => t.tap(find.text('Statistika').last));
-    await shot(tester, app, const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.produce), '14_write_dark', dark: true);
+    await shot(
+      tester,
+      app,
+      const Shell(),
+      '13_stats_dark',
+      dark: true,
+      act: (t) async => t.tap(find.text('Statistika').last),
+    );
+    await shot(
+      tester,
+      app,
+      const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.produce),
+      '14_write_dark',
+      dark: true,
+    );
   });
 }
 
 class ReviewStoreProbe {
-  static int firstId(AppStore app, ReviewMode m) =>
-      app.plan.ids.firstWhere((id) => app.modeFor(app.word(id)!) == m);
+  static int firstId(AppStore app, ReviewMode m) => app.plan.ids.firstWhere((id) => app.modeFor(app.word(id)!) == m);
 }

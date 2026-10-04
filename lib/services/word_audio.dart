@@ -73,8 +73,7 @@ class WordAudio {
   }
 
   /// Saqlanmagan (tahrirlash ekranidagi) faylni oldindan eshitish.
-  Future<void> playBytes(Uint8List bytes, {String key = '__preview__'}) =>
-      _play(BytesSource(bytes), key: key);
+  Future<void> playBytes(Uint8List bytes, {String key = '__preview__'}) => _play(BytesSource(bytes), key: key);
 
   Future<void> _play(Source src, {required String key, bool slow = false}) async {
     try {
@@ -94,6 +93,7 @@ class WordAudio {
   }
 
   Future<void> stop() async {
+    if (Tts.instance.speaking.value != null) Tts.instance.speaking.value = null;
     try {
       await _player?.stop();
     } on PlatformException catch (e) {

@@ -48,7 +48,7 @@ Future<void> bulkAudioUpload(BuildContext context) async {
               rest.isEmpty
                   ? "Barcha fayllar so'zlarga mos keldi."
                   : "${rest.length} ta fayl uchun so'z topilmadi. Fayl nomi inglizcha so'z bilan bir xil bo'lishi kerak "
-                      "(masalan, compulsory.mp3):",
+                        "(masalan, compulsory.mp3):",
               style: T.text(13, color: c.sec, height: 1.5),
             ),
             if (rest.isNotEmpty) ...[

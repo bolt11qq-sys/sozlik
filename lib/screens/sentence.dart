@@ -109,11 +109,19 @@ class _SentenceScreenState extends State<SentenceScreen> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              Expanded(child: Text(w.en, style: T.text(28, w: FontWeight.w700, color: c.ink))),
+                              Expanded(
+                                child: Text(
+                                  w.en,
+                                  style: T.text(28, w: FontWeight.w700, color: c.ink),
+                                ),
+                              ),
                               SpeakButton.word(w, size: 20),
                             ],
                           ),
-                          Text(w.uz, style: T.text(15, w: FontWeight.w600, color: c.accent)),
+                          Text(
+                            w.uz,
+                            style: T.text(15, w: FontWeight.w600, color: c.accent),
+                          ),
                           if (w.hasExample) ...[
                             const SizedBox(height: 12),
                             Container(
@@ -124,7 +132,11 @@ class _SentenceScreenState extends State<SentenceScreen> {
                                 children: [
                                   Text('NAMUNA', style: T.caps(c.sec)),
                                   const SizedBox(height: 6),
-                                  ExampleText(example: w.example!, word: w.en, style: T.text(13.5, color: c.ink, height: 1.5)),
+                                  ExampleText(
+                                    example: w.example!,
+                                    word: w.en,
+                                    style: T.text(13.5, color: c.ink, height: 1.5),
+                                  ),
                                 ],
                               ),
                             ),
@@ -144,7 +156,10 @@ class _SentenceScreenState extends State<SentenceScreen> {
                               fillColor: c.bg,
                               hintText: 'Masalan, o\'zingiz haqingizda yoki kuningiz haqida…',
                               hintStyle: T.text(14, color: c.sec.withAlpha(0x99)),
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                borderSide: BorderSide.none,
+                              ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(14),
                                 borderSide: BorderSide(color: c.violet, width: 1.5),
@@ -157,7 +172,8 @@ class _SentenceScreenState extends State<SentenceScreen> {
                     const SizedBox(height: 12),
                     const HintCard(
                       icon: AppIcons.info,
-                      text: "Gap tekshirilmaydi — muhimi so'zni o'zingiz ishlatib ko'rishingiz. "
+                      text:
+                          "Gap tekshirilmaydi — muhimi so'zni o'zingiz ishlatib ko'rishingiz. "
                           "U saqlanadi va shu so'z takrorlashda chiqqanda ko'rsatiladi.",
                     ),
                     if (app.sentencesFor(w.id!).isNotEmpty) ...[
@@ -182,21 +198,23 @@ class _SentenceScreenState extends State<SentenceScreen> {
               ),
             ),
             if (!done && w != null)
-              BottomBar(children: [
-                BigButton(
-                  label: widget.wordId != null ? 'Bekor qilish' : "O'tkazib yuborish",
-                  kind: ButtonKind.secondary,
-                  onTap: widget.wordId != null ? () => Navigator.of(context).pop() : _skip,
-                ),
-                ListenableBuilder(
-                  listenable: _text,
-                  builder: (_, _) => BigButton(
-                    label: widget.wordId != null ? 'Saqlash' : 'Saqlab, keyingisi',
-                    color: c.violet,
-                    onTap: _text.text.trim().isEmpty ? null : () => _save(w),
+              BottomBar(
+                children: [
+                  BigButton(
+                    label: widget.wordId != null ? 'Bekor qilish' : "O'tkazib yuborish",
+                    kind: ButtonKind.secondary,
+                    onTap: widget.wordId != null ? () => Navigator.of(context).pop() : _skip,
                   ),
-                ),
-              ]),
+                  ListenableBuilder(
+                    listenable: _text,
+                    builder: (_, _) => BigButton(
+                      label: widget.wordId != null ? 'Saqlash' : 'Saqlab, keyingisi',
+                      color: c.violet,
+                      onTap: _text.text.trim().isEmpty ? null : () => _save(w),
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),

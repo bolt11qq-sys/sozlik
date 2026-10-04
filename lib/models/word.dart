@@ -3,12 +3,7 @@ import 'dart:convert';
 enum WordStatus { active, archived }
 
 /// So'z turkumi. Bazada inglizcha kalit, UI'da o'zbekcha nom.
-const Map<String, String> kPosLabels = {
-  'noun': 'ot',
-  'verb': "fe'l",
-  'adj': 'sifat',
-  'adv': 'ravish',
-};
+const Map<String, String> kPosLabels = {'noun': 'ot', 'verb': "fe'l", 'adj': 'sifat', 'adv': 'ravish'};
 
 class Word {
   const Word({
@@ -127,27 +122,27 @@ class Word {
   }
 
   Map<String, Object?> toMap() => {
-        if (id != null) 'id': id,
-        'en': en.trim(),
-        'uz': uz.trim(),
-        'synonyms': synonyms.join(', '),
-        'example': example,
-        'exampleUz': exampleUz,
-        'pos': pos,
-        'audio': audio,
-        'tags': jsonEncode(tags),
-        'stage': stage,
-        'intervalDays': intervalDays,
-        'nextDue': nextDue,
-        'lastSeen': lastSeen,
-        'correctCount': correctCount,
-        'wrongCount': wrongCount,
-        'streakCorrect': streakCorrect,
-        'difficult': difficult ? 1 : 0,
-        'status': status.name,
-        'createdAt': createdAt,
-        'updatedAt': updatedAt,
-      };
+    if (id != null) 'id': id,
+    'en': en.trim(),
+    'uz': uz.trim(),
+    'synonyms': synonyms.join(', '),
+    'example': example,
+    'exampleUz': exampleUz,
+    'pos': pos,
+    'audio': audio,
+    'tags': jsonEncode(tags),
+    'stage': stage,
+    'intervalDays': intervalDays,
+    'nextDue': nextDue,
+    'lastSeen': lastSeen,
+    'correctCount': correctCount,
+    'wrongCount': wrongCount,
+    'streakCorrect': streakCorrect,
+    'difficult': difficult ? 1 : 0,
+    'status': status.name,
+    'createdAt': createdAt,
+    'updatedAt': updatedAt,
+  };
 
   factory Word.fromMap(Map<String, Object?> m) {
     return Word(

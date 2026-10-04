@@ -45,25 +45,30 @@ class HomeScreen extends StatelessWidget {
                 EmptyState(
                   logo: true,
                   title: "Lug'atingiz bo'sh",
-                  text: "So'zlarni bittalab qo'shing yoki ro'yxatni bir yo'la import qiling. "
+                  text:
+                      "So'zlarni bittalab qo'shing yoki ro'yxatni bir yo'la import qiling. "
                       "Har kuni ilova o'zi qaysi so'zni takrorlash kerakligini aytadi.",
                   actions: [
                     BigButton(
-                        label: "So'z qo'shish",
-                        icon: AppIcons.plus,
-                        onTap: () => push(context, const WordEditScreen())),
+                      label: "So'z qo'shish",
+                      icon: AppIcons.plus,
+                      onTap: () => push(context, const WordEditScreen()),
+                    ),
                     BigButton(
-                        label: 'Import qilish',
-                        icon: AppIcons.download,
-                        kind: ButtonKind.secondary,
-                        onTap: () => push(context, const ImportScreen())),
+                      label: 'Import qilish',
+                      icon: AppIcons.download,
+                      kind: ButtonKind.secondary,
+                      onTap: () => push(context, const ImportScreen()),
+                    ),
                     TextButton(
                       onPressed: () async {
                         final n = await app.addSeedWords();
                         if (context.mounted) showToast(context, "$n ta namunaviy so'z qo'shildi (teg: namuna)");
                       },
-                      child: Text("Namunaviy 40 ta so'z bilan sinab ko'rish",
-                          style: T.text(13, w: FontWeight.w600, color: c.accent)),
+                      child: Text(
+                        "Namunaviy 40 ta so'z bilan sinab ko'rish",
+                        style: T.text(13, w: FontWeight.w600, color: c.accent),
+                      ),
                     ),
                   ],
                 ),
@@ -71,21 +76,31 @@ class HomeScreen extends StatelessWidget {
                 const _Hero(),
                 const SizedBox(height: 16),
                 const _ModeChips(),
+                if (app.examDaysLeft != null) ...[const SizedBox(height: 16), const _ExamCard()],
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: StatTile(label: 'Jami', value: '${app.activeWords.length}', onTap: () => onOpenTab(1))),
+                    Expanded(
+                      child: StatTile(label: 'Jami', value: '${app.activeWords.length}', onTap: () => onOpenTab(1)),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
-                        child: StatTile(
-                            label: "O'zlashgan", value: '${app.masteredCount}', color: c.accent, onTap: () => onOpenTab(2))),
+                      child: StatTile(
+                        label: "O'zlashgan",
+                        value: '${app.masteredCount}',
+                        color: c.accent,
+                        onTap: () => onOpenTab(2),
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
-                        child: StatTile(
-                            label: 'Qiyin',
-                            value: '${app.difficultCount}',
-                            color: c.red,
-                            onTap: () => push(context, const HardScreen()))),
+                      child: StatTile(
+                        label: 'Qiyin',
+                        value: '${app.difficultCount}',
+                        color: c.red,
+                        onTap: () => push(context, const HardScreen()),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -127,7 +142,9 @@ class _Header extends StatelessWidget {
       children: [
         AppLogo(size: 30, color: c.accent),
         const SizedBox(width: 10),
-        Expanded(child: Text("So'zlik", style: T.display(23, color: c.ink))),
+        Expanded(
+          child: Text("So'zlik", style: T.display(23, color: c.ink)),
+        ),
         if (streak > 0)
           Semantics(
             label: '$streak kun ketma-ket',
@@ -139,13 +156,21 @@ class _Header extends StatelessWidget {
                 children: [
                   AppIcon(AppIcons.flame, size: 15, color: c.amber),
                   const SizedBox(width: 6),
-                  Text('$streak', style: T.text(13, w: FontWeight.w700, color: c.amber)),
+                  Text(
+                    '$streak',
+                    style: T.text(13, w: FontWeight.w700, color: c.amber),
+                  ),
                 ],
               ),
             ),
           ),
         const SizedBox(width: 8),
-        SquareButton(AppIcons.settings, size: 40, label: 'Sozlamalar', onTap: () => push(context, const SettingsScreen())),
+        SquareButton(
+          AppIcons.settings,
+          size: 40,
+          label: 'Sozlamalar',
+          onTap: () => push(context, const SettingsScreen()),
+        ),
       ],
     );
   }
@@ -175,7 +200,9 @@ class _Hero extends StatelessWidget {
       decoration: BoxDecoration(
         color: dark ? c.card : c.accent,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: dark ? null : [BoxShadow(color: c.accent.withAlpha(0x45), blurRadius: 30, offset: const Offset(0, 14))],
+        boxShadow: dark
+            ? null
+            : [BoxShadow(color: c.accent.withAlpha(0x45), blurRadius: 30, offset: const Offset(0, 14))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -187,8 +214,10 @@ class _Hero extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(finished ? 'Bugungi reja bajarildi' : 'Bugun takrorlash kerak',
-                        style: T.text(13, color: soft)),
+                    Text(
+                      finished ? 'Bugungi reja bajarildi' : 'Bugun takrorlash kerak',
+                      style: T.text(13, color: soft),
+                    ),
                     const SizedBox(height: 4),
                     TweenAnimationBuilder<double>(
                       tween: Tween(end: plan.reviews.toDouble()),
@@ -206,9 +235,13 @@ class _Hero extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                      color: dark ? c.soft(c.orange) : fg.withAlpha(0x26), borderRadius: BorderRadius.circular(12)),
-                  child: Text(finished ? 'ertaga $tomorrow ta' : '+${plan.fresh} yangi',
-                      style: T.text(12, w: FontWeight.w600, color: dark ? c.orange : fg)),
+                    color: dark ? c.soft(c.orange) : fg.withAlpha(0x26),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    finished ? 'ertaga $tomorrow ta' : '+${plan.fresh} yangi',
+                    style: T.text(12, w: FontWeight.w600, color: dark ? c.orange : fg),
+                  ),
                 ),
             ],
           ),
@@ -224,8 +257,7 @@ class _Hero extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('$done / $total bajarildi', style: T.text(12, color: soft)),
-              Text(finished ? 'kun yopildi' : '~${estimateMinutes(plan.total)} daqiqa',
-                  style: T.text(12, color: soft)),
+              Text(finished ? 'kun yopildi' : '~${estimateMinutes(plan.total)} daqiqa', style: T.text(12, color: soft)),
             ],
           ),
           const SizedBox(height: 16),
@@ -235,16 +267,20 @@ class _Hero extends StatelessWidget {
             radius: 15,
             onTap: finished
                 ? (app.difficultCount > 0
-                    ? () => push(context, const HardScreen())
-                    : () => push(context, const WordEditScreen()))
+                      ? () => push(context, const HardScreen())
+                      : () => push(context, const WordEditScreen()))
                 : () => push(context, const ReviewScreen(kind: SessionKind.daily)),
             child: SizedBox(
               height: 50,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  AppIcon(finished ? (app.difficultCount > 0 ? AppIcons.warning : AppIcons.plus) : AppIcons.play,
-                      size: 18, color: dark ? c.onAccent : c.accent, stroke: 2),
+                  AppIcon(
+                    finished ? (app.difficultCount > 0 ? AppIcons.warning : AppIcons.plus) : AppIcons.play,
+                    size: 18,
+                    color: dark ? c.onAccent : c.accent,
+                    stroke: 2,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     finished
@@ -265,52 +301,149 @@ class _Hero extends StatelessWidget {
 class _ModeChips extends StatelessWidget {
   const _ModeChips();
 
+  static const quick = 10;
+
   @override
   Widget build(BuildContext context) {
     final app = context.app;
     final c = context.c;
     final counts = app.planModes;
     final modes = ReviewMode.values.where((m) => app.s.isEnabled(m)).toList();
+    final total = app.plan.total;
+    final chips = <Widget>[
+      // Vaqt kam bo'lganda: navbatning eng muhim 10 tasi.
+      if (total > quick)
+        _Chip(
+          icon: AppIcons.play,
+          color: c.accent,
+          title: 'Tez seans',
+          sub: '$quick ta · ~${estimateMinutes(quick)} daqiqa',
+          onTap: () => push(context, const ReviewScreen(kind: SessionKind.daily, limit: quick)),
+        ),
+      for (final m in modes)
+        _Chip(
+          icon: modeIcon(m),
+          color: modeColor(c, m),
+          title: m.label,
+          sub: (counts[m] ?? 0) == 0 ? "bugun yo'q" : '${counts[m]} ta · davom etish',
+          onTap: (counts[m] ?? 0) == 0 ? null : () => push(context, ReviewScreen(kind: SessionKind.daily, mode: m)),
+        ),
+    ];
     return SizedBox(
       height: 60,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         clipBehavior: Clip.none,
-        itemCount: modes.length,
+        itemCount: chips.length,
         separatorBuilder: (_, _) => const SizedBox(width: 10),
-        itemBuilder: (context, i) {
-          final m = modes[i];
-          final n = counts[m] ?? 0;
-          return Opacity(
-            opacity: n == 0 ? 0.55 : 1,
-            child: Pressable(
-              color: c.card,
-              radius: 16,
-              haptic: true,
-              onTap: n == 0 ? null : () => push(context, ReviewScreen(kind: SessionKind.daily, mode: m)),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(minWidth: 122),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconBox(modeIcon(m), color: modeColor(c, m), size: 34, radius: 10),
-                    const SizedBox(width: 10),
-                    Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(m.label, style: T.text(13, w: FontWeight.w700, color: c.ink)),
-                        const SizedBox(height: 1),
-                        Text(n == 0 ? 'bugun yo\'q' : '$n ta · davom etish', style: T.text(11, color: c.sec)),
-                      ],
-                    ),
-                  ],
-                ),
+        itemBuilder: (_, i) => chips[i],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({required this.icon, required this.color, required this.title, required this.sub, required this.onTap});
+
+  final AppIcons icon;
+  final Color color;
+  final String title;
+  final String sub;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    return Opacity(
+      opacity: onTap == null ? 0.55 : 1,
+      child: Pressable(
+        color: c.card,
+        radius: 16,
+        haptic: true,
+        onTap: onTap,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 122),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconBox(icon, color: color, size: 34, radius: 10),
+              const SizedBox(width: 10),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: T.text(13, w: FontWeight.w700, color: c.ink),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(sub, style: T.text(11, color: c.sec)),
+                ],
               ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Maqsad imtihoni: qolgan kunlar va shu sur'atdagi prognoz.
+class _ExamCard extends StatelessWidget {
+  const _ExamCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.app;
+    final c = context.c;
+    final left = app.examDaysLeft;
+    if (left == null) return const SizedBox.shrink();
+    final name = app.s.examName;
+    final avg = app.avgNewPerDay;
+    final fresh = app.newCount;
+    final String title;
+    final String text;
+    if (left < 0) {
+      title = "$name o'tdi";
+      text = "Yangi maqsad sanasini Sozlamalarda belgilang.";
+    } else {
+      title = left == 0 ? '$name — bugun' : '$name imtihonigacha $left kun';
+      final projected = (avg * left).round();
+      final daysForNew = avg <= 0 ? null : (fresh / avg).ceil();
+      text = [
+        if (avg > 0)
+          "Kuniga o'rtacha ${avg.toStringAsFixed(1)} ta yangi so'z → yana ~${projected.clamp(0, fresh)} tasini boshlaysiz.",
+        if (avg <= 0) "Oxirgi 2 haftada yangi so'z boshlanmagan.",
+        if (daysForNew != null && fresh > 0)
+          daysForNew <= left
+              ? "Lug'atdagi $fresh ta yangi so'z imtihondan oldin tugaydi."
+              : "Lug'atdagi $fresh ta yangi so'zning hammasiga ulgurish uchun kunlik yangi so'zni oshiring.",
+      ].join(' ');
+    }
+    return AppCard(
+      radius: 16,
+      onTap: () => push(context, const SettingsScreen()),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          IconBox(AppIcons.calendar, color: c.amber),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: T.text(14, w: FontWeight.w700, color: c.ink),
+                ),
+                const SizedBox(height: 3),
+                Text(text, style: T.text(12, color: c.sec, height: 1.45)),
+              ],
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -332,7 +465,10 @@ class _Weekly extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Haftalik', style: T.text(14, w: FontWeight.w700, color: c.ink)),
+              Text(
+                'Haftalik',
+                style: T.text(14, w: FontWeight.w700, color: c.ink),
+              ),
               Text('$sum ta takrorlash', style: T.text(12, color: c.sec)),
             ],
           ),
@@ -350,7 +486,13 @@ class _Weekly extends StatelessWidget {
 }
 
 class _LinkCard extends StatelessWidget {
-  const _LinkCard({required this.icon, required this.color, required this.title, required this.value, required this.onTap});
+  const _LinkCard({
+    required this.icon,
+    required this.color,
+    required this.title,
+    required this.value,
+    required this.onTap,
+  });
 
   final AppIcons icon;
   final Color color;
@@ -369,7 +511,12 @@ class _LinkCard extends StatelessWidget {
         children: [
           IconBox(icon, color: color),
           const SizedBox(width: 12),
-          Expanded(child: Text(title, style: T.text(14, w: FontWeight.w600, color: c.ink))),
+          Expanded(
+            child: Text(
+              title,
+              style: T.text(14, w: FontWeight.w600, color: c.ink),
+            ),
+          ),
           Text(value, style: T.text(13, color: c.sec)),
           const SizedBox(width: 6),
           AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),

@@ -34,7 +34,8 @@ class HardScreen extends StatelessWidget {
                   const EmptyState(
                     icon: AppIcons.check,
                     title: "Qiyin so'z yo'q",
-                    text: "3 marta xato qilingan so'zlar shu yerga avtomatik tushadi. "
+                    text:
+                        "3 marta xato qilingan so'zlar shu yerga avtomatik tushadi. "
                         "Takrorlash paytida ogohlantirish belgisini bosib, o'zingiz ham qo'shishingiz mumkin.",
                   )
                 else ...[
@@ -72,13 +73,20 @@ class HardScreen extends StatelessWidget {
                             background: Container(
                               alignment: Alignment.centerRight,
                               padding: const EdgeInsets.only(right: 8),
-                              child: Text('Qiyin emas', style: T.text(13, w: FontWeight.w700, color: c.accent)),
+                              child: Text(
+                                'Qiyin emas',
+                                style: T.text(13, w: FontWeight.w700, color: c.accent),
+                              ),
                             ),
                             onDismissed: (_) {
                               final w = words[i];
                               app.setDifficult(w.id!, false);
-                              showToast(context, '"${w.en}" qiyin so\'zlardan olindi',
-                                  action: 'Qaytarish', onAction: () => app.setDifficult(w.id!, true));
+                              showToast(
+                                context,
+                                '"${w.en}" qiyin so\'zlardan olindi',
+                                action: 'Qaytarish',
+                                onAction: () => app.setDifficult(w.id!, true),
+                              );
                             },
                             child: InkWell(
                               onTap: () => push(context, WordDetailScreen(wordId: words[i].id!)),
@@ -89,21 +97,30 @@ class HardScreen extends StatelessWidget {
                                 ),
                                 child: Row(
                                   children: [
-                                    IconBox(null,
-                                        color: c.red,
-                                        child: Text('${words[i].wrongCount}',
-                                            style: T.text(13, w: FontWeight.w700, color: c.red))),
+                                    IconBox(
+                                      null,
+                                      color: c.red,
+                                      child: Text(
+                                        '${words[i].wrongCount}',
+                                        style: T.text(13, w: FontWeight.w700, color: c.red),
+                                      ),
+                                    ),
                                     const SizedBox(width: 12),
                                     Expanded(
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
-                                          Text(words[i].en, style: T.text(15, w: FontWeight.w600, color: c.ink)),
+                                          Text(
+                                            words[i].en,
+                                            style: T.text(15, w: FontWeight.w600, color: c.ink),
+                                          ),
                                           const SizedBox(height: 2),
-                                          Text(words[i].uz,
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: T.text(12, color: c.sec)),
+                                          Text(
+                                            words[i].uz,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: T.text(12, color: c.sec),
+                                          ),
                                         ],
                                       ),
                                     ),
@@ -121,12 +138,16 @@ class HardScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text("Chapga suring — ro'yxatdan olib tashlash", textAlign: TextAlign.center,
-                      style: T.text(11, color: c.sec)),
+                  Text(
+                    "Chapga suring — ro'yxatdan olib tashlash",
+                    textAlign: TextAlign.center,
+                    style: T.text(11, color: c.sec),
+                  ),
                   const SizedBox(height: 16),
                   const HintCard(
                     icon: AppIcons.pencil,
-                    text: "Bir so'z doim unutilsa, ko'pincha kartochka yomon yozilgan: misol gap yo'q yoki tarjima "
+                    text:
+                        "Bir so'z doim unutilsa, ko'pincha kartochka yomon yozilgan: misol gap yo'q yoki tarjima "
                         "juda keng. Tahrirlab ko'ring.",
                   ),
                 ],

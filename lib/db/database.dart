@@ -17,13 +17,18 @@ class AppDatabase {
   final Database db;
 
   /// Joriy sxema versiyasi. Har yangi migratsiya [_migrations] ga qo'shiladi.
-  static const int schemaVersion = 2;
+  static const int schemaVersion = 3;
 
   /// `versiya → SQL buyruqlar`. Masalan:
   /// `2: ['ALTER TABLE words ADD COLUMN ipa TEXT']`.
   static const Map<int, List<String>> _migrations = {
     // v2: foydalanuvchi yuklagan talaffuz fayli.
     2: ['ALTER TABLE words ADD COLUMN audio TEXT'],
+    // v3: maqsad imtihoni (nomi va sanasi).
+    3: [
+      "ALTER TABLE settings ADD COLUMN examName TEXT NOT NULL DEFAULT 'Multilevel'",
+      'ALTER TABLE settings ADD COLUMN examDate TEXT',
+    ],
   };
 
   static const _tables = ['meta', 'settings', 'words', 'review_logs', 'day_stats', 'sentences'];
@@ -73,7 +78,9 @@ class AppDatabase {
         reminderTime TEXT NOT NULL DEFAULT '20:00',
         dayStartHour INTEGER NOT NULL DEFAULT 4,
         theme TEXT NOT NULL DEFAULT 'system',
-        lastBackupAt INTEGER
+        lastBackupAt INTEGER,
+        examName TEXT NOT NULL DEFAULT 'Multilevel',
+        examDate TEXT
       )''');
     batch.execute('''
       CREATE TABLE words (
@@ -224,6 +231,28 @@ class AppDatabase {
 
   Future<void> deleteWord(int id) => db.delete('words', where: 'id = ?', whereArgs: [id]);
 
+  /// Bir nechta so'zni bitta tranzaksiyada yangilash.
+  Future<void> updateWords(List<Word> words) async {
+    await db.transaction((txn) async {
+      final b = txn.batch();
+      for (final w in words) {
+        b.update('words', w.toMap(), where: 'id = ?', whereArgs: [w.id]);
+      }
+      await b.commit(noResult: true);
+    });
+  }
+
+  Future<void> deleteWords(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await db.transaction((txn) async {
+      final b = txn.batch();
+      for (final id in ids) {
+        b.delete('words', where: 'id = ?', whereArgs: [id]);
+      }
+      await b.commit(noResult: true);
+    });
+  }
+
   // ───────────── review logs / day stats ─────────────
 
   /// Javob, so'z holati va kun statistikasi bitta tranzaksiyada yoziladi.
@@ -261,8 +290,7 @@ class AppDatabase {
   }
 
   Future<List<ReviewLog>> logsForWord(int wordId, {int limit = 100}) async {
-    final r = await db.query('review_logs',
-        where: 'wordId = ?', whereArgs: [wordId], orderBy: 'at DESC', limit: limit);
+    final r = await db.query('review_logs', where: 'wordId = ?', whereArgs: [wordId], orderBy: 'at DESC', limit: limit);
     return r.map(ReviewLog.fromMap).toList();
   }
 
@@ -348,16 +376,22 @@ class AppDatabase {
       for (final row in tables['review_logs'] ?? const <Map<String, Object?>>[]) {
         final nid = idMap[row['wordId']];
         if (nid == null) continue;
-        batch.insert('review_logs', Map<String, Object?>.from(row)
-          ..remove('id')
-          ..['wordId'] = nid);
+        batch.insert(
+          'review_logs',
+          Map<String, Object?>.from(row)
+            ..remove('id')
+            ..['wordId'] = nid,
+        );
       }
       for (final row in tables['sentences'] ?? const <Map<String, Object?>>[]) {
         final nid = idMap[row['wordId']];
         if (nid == null) continue;
-        batch.insert('sentences', Map<String, Object?>.from(row)
-          ..remove('id')
-          ..['wordId'] = nid);
+        batch.insert(
+          'sentences',
+          Map<String, Object?>.from(row)
+            ..remove('id')
+            ..['wordId'] = nid,
+        );
       }
       for (final row in tables['day_stats'] ?? const <Map<String, Object?>>[]) {
         batch.insert('day_stats', row, conflictAlgorithm: ConflictAlgorithm.ignore);

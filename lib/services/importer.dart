@@ -6,13 +6,7 @@
 import '../models/word.dart';
 
 class ImportEntry {
-  const ImportEntry({
-    required this.lineNo,
-    required this.en,
-    required this.uz,
-    this.synonyms = const [],
-    this.example,
-  });
+  const ImportEntry({required this.lineNo, required this.en, required this.uz, this.synonyms = const [], this.example});
 
   final int lineNo;
   final String en;
@@ -51,6 +45,7 @@ ImportPreview parseImport(String text, Set<String> existingKeys) {
   final dups = <ImportEntry>[];
   final errors = <ImportError>[];
   final seen = <String>{...existingKeys};
+  var exportedCsv = false;
 
   final lines = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
   for (var i = 0; i < lines.length; i++) {
@@ -71,18 +66,21 @@ ImportPreview parseImport(String text, Set<String> existingKeys) {
         errors.add(ImportError(i + 1, line, "Ajratuvchi topilmadi (:: yoki vergul)"));
         continue;
       }
-      parts = parseCsvLine(line, delim).map((e) => e.trim()).toList();
+      final all = parseCsvLine(line.replaceFirst('﻿', ''), delim).map((e) => e.trim()).toList();
       // Sarlavha qatori: en,uz,...
       if (i == _firstContentLine(lines) &&
-          parts.length >= 2 &&
-          parts[0].toLowerCase() == 'en' &&
-          parts[1].toLowerCase() == 'uz') {
+          all.length >= 2 &&
+          all[0].toLowerCase() == 'en' &&
+          all[1].toLowerCase() == 'uz') {
+        exportedCsv = all.length > 4;
         continue;
       }
-      if (parts.length > 4) {
+      if (all.length > 4 && !exportedCsv) {
         errors.add(ImportError(i + 1, line, "Ustunlar ko'p: en, uz, synonyms, example"));
         continue;
       }
+      // So'zlik eksport qilgan CSV: faqat birinchi to'rt ustun olinadi.
+      parts = all.take(4).toList();
     }
 
     final en = parts.isNotEmpty ? parts[0] : '';
@@ -178,6 +176,36 @@ String exportAnki(Iterable<Word> words) {
     if ((w.exampleUz ?? '').isNotEmpty) back.write('<br><i>${clean(w.exampleUz!)}</i>');
     final tags = w.tags.map((t) => t.trim().replaceAll(RegExp(r'\s+'), '_')).join(' ');
     b.writeln('$front\t$back\t$tags');
+  }
+  return b.toString();
+}
+
+/// CSV eksport: Excel/Google Sheets'da ochiladi va qayta import qilinadi
+/// (birinchi to'rt ustun import formatiga mos).
+String exportCsv(Iterable<Word> words) {
+  String q(Object? v) {
+    final s = (v ?? '').toString();
+    return RegExp(r'[",\n\r]').hasMatch(s) ? '"${s.replaceAll('"', '""')}"' : s;
+  }
+
+  final b = StringBuffer('\uFEFFen,uz,synonyms,example,exampleUz,pos,tags,stage,nextDue,correct,wrong,status\n');
+  for (final w in words) {
+    b.writeln(
+      [
+        w.en,
+        w.uz,
+        w.synonyms.join(', '),
+        w.example,
+        w.exampleUz,
+        w.pos,
+        w.tags.join(', '),
+        w.stage,
+        w.nextDue,
+        w.correctCount,
+        w.wrongCount,
+        w.status.name,
+      ].map(q).join(','),
+    );
   }
   return b.toString();
 }
