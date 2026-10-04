@@ -118,7 +118,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                         const SizedBox(height: 6),
                         Text('Sinonim: ${w.synonyms.join(', ')}', style: T.text(13, color: c.sec, height: 1.5)),
                       ],
-                      if (w.hasExample) ...[
+                      for (final e in w.examples) ...[
                         const SizedBox(height: 12),
                         Container(
                           padding: const EdgeInsets.all(13),
@@ -130,15 +130,32 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    ExampleText(example: w.example!, word: w.en),
-                                    if ((w.exampleUz ?? '').isNotEmpty) ...[
+                                    ExampleText(example: e.en, word: w.en),
+                                    if ((e.uz ?? '').isNotEmpty) ...[
                                       const SizedBox(height: 6),
-                                      Text(w.exampleUz!, style: T.text(12, color: c.sec, height: 1.45)),
+                                      Text(e.uz!, style: T.text(12, color: c.sec, height: 1.45)),
                                     ],
                                   ],
                                 ),
                               ),
-                              SpeakButton(w.example!),
+                              SpeakButton(e.en),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (w.hasMnemonic) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(13),
+                          decoration: BoxDecoration(color: c.soft(c.amber), borderRadius: BorderRadius.circular(14)),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppIcon(AppIcons.bulb, size: 18, color: c.amber),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(w.mnemonic!, style: T.text(13.5, color: c.ink, height: 1.5)),
+                              ),
                             ],
                           ),
                         ),

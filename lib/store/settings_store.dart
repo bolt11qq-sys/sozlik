@@ -37,6 +37,15 @@ class SettingsStore extends ChangeNotifier {
   bool get notificationAsked => _prefs?.getBool('notificationAsked') ?? false;
   set notificationAsked(bool v) => _prefs?.setBool('notificationAsked', v);
 
+  /// Kechki takrorlash qilingan oxirgi mantiqiy kun.
+  String? _recapDayMem;
+  String? get recapDay => _prefs?.getString('recapDay') ?? _recapDayMem;
+  set recapDay(String? v) {
+    _recapDayMem = v;
+    if (v != null) _prefs?.setString('recapDay', v);
+    notifyListeners();
+  }
+
   bool get audioAutoplay => _prefs?.getBool('audioAutoplay') ?? true;
   set audioAutoplay(bool v) {
     _prefs?.setBool('audioAutoplay', v);

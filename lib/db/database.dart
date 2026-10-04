@@ -17,7 +17,7 @@ class AppDatabase {
   final Database db;
 
   /// Joriy sxema versiyasi. Har yangi migratsiya [_migrations] ga qo'shiladi.
-  static const int schemaVersion = 3;
+  static const int schemaVersion = 4;
 
   /// `versiya → SQL buyruqlar`. Masalan:
   /// `2: ['ALTER TABLE words ADD COLUMN ipa TEXT']`.
@@ -28,6 +28,12 @@ class AppDatabase {
     3: [
       "ALTER TABLE settings ADD COLUMN examName TEXT NOT NULL DEFAULT 'Multilevel'",
       'ALTER TABLE settings ADD COLUMN examDate TEXT',
+    ],
+    // v4: qo'shimcha misollar, mnemonika, "gapni to'ldirish" rejimi.
+    4: [
+      'ALTER TABLE words ADD COLUMN extraExamples TEXT',
+      'ALTER TABLE words ADD COLUMN mnemonic TEXT',
+      'ALTER TABLE settings ADD COLUMN modeCloze INTEGER NOT NULL DEFAULT 1',
     ],
   };
 
@@ -74,6 +80,7 @@ class AppDatabase {
         modeProduce INTEGER NOT NULL DEFAULT 1,
         modeSynonym INTEGER NOT NULL DEFAULT 1,
         modeAudio INTEGER NOT NULL DEFAULT 1,
+        modeCloze INTEGER NOT NULL DEFAULT 1,
         reminderOn INTEGER NOT NULL DEFAULT 1,
         reminderTime TEXT NOT NULL DEFAULT '20:00',
         dayStartHour INTEGER NOT NULL DEFAULT 4,
@@ -92,6 +99,8 @@ class AppDatabase {
         exampleUz TEXT,
         pos TEXT,
         audio TEXT,
+        extraExamples TEXT,
+        mnemonic TEXT,
         tags TEXT NOT NULL DEFAULT '[]',
         stage INTEGER NOT NULL DEFAULT 0,
         intervalDays INTEGER NOT NULL DEFAULT 0,
@@ -287,6 +296,15 @@ class AppDatabase {
   Future<Map<String, int>> reviewedByDay() async {
     final r = await db.query('day_stats', columns: ['day', 'reviewed'], where: 'reviewed > 0');
     return {for (final m in r) m['day'] as String: m['reviewed'] as int};
+  }
+
+  /// Shu kuni birinchi marta (jadval bo'yicha) takrorlangan yangi so'zlar.
+  Future<Set<int>> newWordIdsOn(String day) async {
+    final r = await db.rawQuery(
+      'SELECT DISTINCT wordId FROM review_logs WHERE day = ? AND stageBefore = 0 AND practice = 0',
+      [day],
+    );
+    return {for (final m in r) m['wordId'] as int};
   }
 
   Future<List<ReviewLog>> logsForWord(int wordId, {int limit = 100}) async {

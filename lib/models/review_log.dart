@@ -2,7 +2,8 @@ enum ReviewMode {
   recognize('Tanish', 'Inglizcha → o\'zbekcha'),
   produce('Yozib', 'O\'zbekcha → inglizcha, yozib'),
   synonym('Sinonim', 'Ma\'nodosh so\'zni topish'),
-  audio('Audio', 'Misol gapni eshitib topish');
+  audio('Audio', 'Misol gapni eshitib topish'),
+  cloze("Gap to'ldirish", "Gapdagi bo'sh joyga so'zni yozish");
 
   const ReviewMode(this.label, this.hint);
   final String label;

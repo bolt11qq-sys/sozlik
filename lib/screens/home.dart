@@ -76,6 +76,7 @@ class HomeScreen extends StatelessWidget {
                 const _Hero(),
                 const SizedBox(height: 16),
                 const _ModeChips(),
+                if (app.recapDue) ...[const SizedBox(height: 16), const _RecapCard()],
                 if (app.examDaysLeft != null) ...[const SizedBox(height: 16), const _ExamCard()],
                 const SizedBox(height: 16),
                 Row(
@@ -384,6 +385,47 @@ class _Chip extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Kechki takrorlash: bugun boshlangan yangi so'zlarni uxlashdan oldin yana bir ko'rish.
+class _RecapCard extends StatelessWidget {
+  const _RecapCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.app;
+    final c = context.c;
+    final n = app.recapWords.length;
+    return AppCard(
+      radius: 16,
+      onTap: () => push(context, const ReviewScreen(kind: SessionKind.recap)),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          IconBox(AppIcons.moon, color: c.violet),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Kechki takrorlash',
+                  style: T.text(14, w: FontWeight.w700, color: c.ink),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  "Bugungi $n ta yangi so'z · ~${estimateMinutes(n)} daqiqa. Uxlashdan oldin ko'rilgan so'z yaxshiroq saqlanadi.",
+                  style: T.text(12, color: c.sec, height: 1.45),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          AppIcon(AppIcons.play, size: 18, color: c.violet),
+        ],
       ),
     );
   }

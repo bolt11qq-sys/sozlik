@@ -15,6 +15,8 @@ class Word {
     this.exampleUz,
     this.pos,
     this.audio,
+    this.extraExamples = const [],
+    this.mnemonic,
     this.tags = const [],
     this.stage = 0,
     this.intervalDays = 0,
@@ -39,6 +41,12 @@ class Word {
 
   /// Foydalanuvchi yuklagan talaffuz fayli nomi (ilova ichidagi `audio/` papkada).
   final String? audio;
+
+  /// Qo'shimcha misol gaplar: `(inglizcha, tarjima)`. Har takrorlashda boshqasi chiqadi.
+  final List<Example> extraExamples;
+
+  /// Foydalanuvchining o'z eslatmasi (bog'lanish, mnemonika).
+  final String? mnemonic;
   final List<String> tags;
   final int stage;
   final int intervalDays;
@@ -62,6 +70,13 @@ class Word {
   bool get isArchived => status == WordStatus.archived;
   bool get hasExample => (example ?? '').trim().isNotEmpty;
   bool get hasAudio => (audio ?? '').isNotEmpty;
+  bool get hasMnemonic => (mnemonic ?? '').trim().isNotEmpty;
+
+  /// Barcha misollar: asosiysi birinchi.
+  List<Example> get examples => [
+    if (hasExample) Example(example!.trim(), exampleUz),
+    ...extraExamples.where((e) => e.en.trim().isNotEmpty),
+  ];
 
   /// TZ 5.2: `streakCorrect >= 3` va `stage >= 5` — o'zlashtirilgan.
   bool get isMastered => stage >= 6 || (stage >= 5 && streakCorrect >= 3);
@@ -83,6 +98,9 @@ class Word {
     bool clearPos = false,
     String? audio,
     bool clearAudio = false,
+    List<Example>? extraExamples,
+    String? mnemonic,
+    bool clearMnemonic = false,
     List<String>? tags,
     int? stage,
     int? intervalDays,
@@ -106,6 +124,8 @@ class Word {
       exampleUz: clearExampleUz ? null : (exampleUz ?? this.exampleUz),
       pos: clearPos ? null : (pos ?? this.pos),
       audio: clearAudio ? null : (audio ?? this.audio),
+      extraExamples: extraExamples ?? this.extraExamples,
+      mnemonic: clearMnemonic ? null : (mnemonic ?? this.mnemonic),
       tags: tags ?? this.tags,
       stage: stage ?? this.stage,
       intervalDays: intervalDays ?? this.intervalDays,
@@ -130,6 +150,8 @@ class Word {
     'exampleUz': exampleUz,
     'pos': pos,
     'audio': audio,
+    'extraExamples': extraExamples.isEmpty ? null : jsonEncode([for (final e in extraExamples) e.toJson()]),
+    'mnemonic': mnemonic,
     'tags': jsonEncode(tags),
     'stage': stage,
     'intervalDays': intervalDays,
@@ -154,6 +176,8 @@ class Word {
       exampleUz: _nullIfEmpty(m['exampleUz'] as String?),
       pos: _nullIfEmpty(m['pos'] as String?),
       audio: _nullIfEmpty(m['audio'] as String?),
+      extraExamples: Example.decodeList(m['extraExamples']),
+      mnemonic: _nullIfEmpty(m['mnemonic'] as String?),
       tags: decodeTags(m['tags']),
       stage: (m['stage'] as int?) ?? 0,
       intervalDays: (m['intervalDays'] as int?) ?? 0,
@@ -186,5 +210,30 @@ class Word {
       return splitList(raw);
     }
     return const [];
+  }
+}
+
+/// Misol gap va (ixtiyoriy) tarjimasi.
+class Example {
+  const Example(this.en, [this.uz]);
+
+  final String en;
+  final String? uz;
+
+  Map<String, Object?> toJson() => {'en': en, if ((uz ?? '').isNotEmpty) 'uz': uz};
+
+  static List<Example> decodeList(Object? raw) {
+    if (raw is! String || raw.isEmpty) return const [];
+    try {
+      final v = jsonDecode(raw);
+      if (v is! List) return const [];
+      return [
+        for (final e in v)
+          if (e is Map && e['en'] is String && (e['en'] as String).trim().isNotEmpty)
+            Example(e['en'] as String, e['uz'] is String ? e['uz'] as String : null),
+      ];
+    } on FormatException {
+      return const [];
+    }
   }
 }

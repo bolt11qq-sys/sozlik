@@ -190,26 +190,38 @@ bool hasAdjacentDuplicates(List<int> q) {
 
 // ───────────────────────────── Rejim tanlash ─────────────────────────────
 
-/// Bosqich bo'yicha rejim (TZ 5.4). O'chirilgan rejim umuman chiqmaydi.
-/// [canAudio] — misol gapda so'z topiladi; [canSynonym] — sinonim va variantlar bor.
+/// Bosqich bo'yicha rejim (TZ 5.4, 1.3 da kengaytirilgan). O'chirilgan rejim umuman chiqmaydi.
+///
+/// * 0–1: Tanish.
+/// * 2–3: Tanish → Audio → Sinonim (tanlash) navbatma-navbat.
+/// * 4+:  Yozib → Sinonim (yozib eslash) → Gapni to'ldirish navbatma-navbat.
+///
+/// [canAudio] / [canCloze] — misol gapda so'z topiladi; [canSynonym] — sinonimi bor.
 ReviewMode pickMode({
   required int stage,
   required int salt,
   required Set<ReviewMode> enabled,
   required bool canAudio,
   required bool canSynonym,
+  bool canCloze = false,
 }) {
+  List<ReviewMode> rotate(List<ReviewMode> cycle) {
+    final k = salt % cycle.length;
+    return [...cycle.skip(k), ...cycle.take(k)];
+  }
+
   final List<ReviewMode> preferred;
   if (stage <= 1) {
     preferred = [ReviewMode.recognize];
   } else if (stage <= 3) {
-    preferred = salt.isEven ? [ReviewMode.recognize, ReviewMode.audio] : [ReviewMode.audio, ReviewMode.recognize];
+    preferred = rotate([ReviewMode.recognize, ReviewMode.audio, ReviewMode.synonym]);
   } else {
-    preferred = salt.isEven ? [ReviewMode.produce, ReviewMode.synonym] : [ReviewMode.synonym, ReviewMode.produce];
+    preferred = rotate([ReviewMode.produce, ReviewMode.synonym, ReviewMode.cloze]);
   }
   bool feasible(ReviewMode m) => switch (m) {
     ReviewMode.audio => canAudio,
     ReviewMode.synonym => canSynonym,
+    ReviewMode.cloze => canCloze,
     _ => true,
   };
   for (final m in preferred) {
@@ -217,12 +229,67 @@ ReviewMode pickMode({
   }
   // Zaxira tartibi: bosqichga eng yaqin rejim.
   final fallback = stage <= 3
-      ? [ReviewMode.recognize, ReviewMode.audio, ReviewMode.produce, ReviewMode.synonym]
-      : [ReviewMode.produce, ReviewMode.synonym, ReviewMode.recognize, ReviewMode.audio];
+      ? [ReviewMode.recognize, ReviewMode.audio, ReviewMode.synonym, ReviewMode.produce, ReviewMode.cloze]
+      : [ReviewMode.produce, ReviewMode.cloze, ReviewMode.synonym, ReviewMode.recognize, ReviewMode.audio];
   for (final m in fallback) {
     if (enabled.contains(m) && feasible(m)) return m;
   }
   return ReviewMode.recognize;
+}
+
+/// Sinonim rejimi: 4+ bosqichda sinonimlar yozib eslanadi, undan pastda — tanlanadi.
+bool synonymTyped(int stage) => stage >= 4;
+
+// ───────────────────────────── Sinonimlarni eslash ─────────────────────────────
+
+class SynonymRecall {
+  const SynonymRecall({required this.recalled, required this.missed, required this.wrong, required this.required});
+
+  /// Eslangan sinonimlar (lug'atdagi yozilishi bilan).
+  final List<String> recalled;
+
+  /// Eslanmagan sinonimlar.
+  final List<String> missed;
+
+  /// Sinonim bo'lmagan javoblar.
+  final List<String> wrong;
+
+  /// To'g'ri hisoblanishi uchun kerakli son.
+  final int required;
+
+  bool get isCorrect => recalled.length >= required;
+}
+
+/// Kerakli son: sinonimlarning yarmi (yuqoriga yaxlitlab), kamida bitta.
+int synonymsRequired(int total) => total <= 0 ? 0 : (total / 2).ceil();
+
+/// Foydalanuvchi vergul bilan yozgan sinonimlarni tekshiradi.
+/// Bitta harf xato (Levenshtein 1) ham eslangan hisoblanadi.
+SynonymRecall checkSynonyms(String input, String word, List<String> synonyms) {
+  final answers = input
+      .split(RegExp(r'[,;\n/]+'))
+      .map(normalizeAnswer)
+      .where((a) => a.isNotEmpty && a != normalizeAnswer(word))
+      .toSet();
+  final recalled = <String>[];
+  final missed = <String>[];
+  final used = <String>{};
+  for (final syn in synonyms) {
+    final t = normalizeAnswer(syn);
+    final hit = answers.where((a) => !used.contains(a) && (a == t || (t.length >= 3 && levenshtein(a, t) == 1)));
+    if (hit.isNotEmpty) {
+      used.add(hit.first);
+      recalled.add(syn);
+    } else {
+      missed.add(syn);
+    }
+  }
+  return SynonymRecall(
+    recalled: recalled,
+    missed: missed,
+    wrong: answers.where((a) => !used.contains(a)).toList(),
+    required: synonymsRequired(synonyms.length),
+  );
 }
 
 // ───────────────────────────── Javobni tekshirish ─────────────────────────────
@@ -248,6 +315,18 @@ String normalizeAnswer(String s) {
   t = t.replaceAll(RegExp(r'[.!?,;:]+$'), '');
   if (t.startsWith('to ')) t = t.substring(3);
   return t.trim();
+}
+
+/// Gapni to'ldirish: gapdagi aynan shakl ([hidden]) yoki lug'atdagi so'z/sinonim.
+AnswerCheck checkCloze(String input, String hidden, String target, List<String> synonyms) {
+  final a = normalizeAnswer(input);
+  final h = normalizeAnswer(hidden);
+  if (a.isNotEmpty && a == h) return AnswerCheck(Verdict.correct, expected: hidden);
+  // Lug'atdagi shakl yoki sinonim — aniq mos kelsa to'g'ri.
+  final base = checkAnswer(input, target, synonyms);
+  if (base.verdict == Verdict.correct) return base;
+  if (a.isNotEmpty && h.length >= 3 && levenshtein(a, h) == 1) return AnswerCheck(Verdict.almost, expected: hidden);
+  return base;
 }
 
 /// Katta-kichik harf va bosh/oxirgi bo'shliqlar hisobga olinmaydi.

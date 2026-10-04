@@ -152,40 +152,87 @@ void main() {
     });
   });
 
-  group('Rejimlar (TZ 5.4)', () {
-    const all = {ReviewMode.recognize, ReviewMode.produce, ReviewMode.synonym, ReviewMode.audio};
+  group('Rejimlar (TZ 5.4, 1.3)', () {
+    const all = {ReviewMode.recognize, ReviewMode.produce, ReviewMode.synonym, ReviewMode.audio, ReviewMode.cloze};
+    ReviewMode pick(
+      int stage,
+      int salt, {
+      Set<ReviewMode> enabled = all,
+      bool audio = true,
+      bool syn = true,
+      bool cloze = true,
+    }) => pickMode(stage: stage, salt: salt, enabled: enabled, canAudio: audio, canSynonym: syn, canCloze: cloze);
 
     test('0–1 bosqich — Tanish', () {
-      expect(pickMode(stage: 0, salt: 1, enabled: all, canAudio: true, canSynonym: true), ReviewMode.recognize);
-      expect(pickMode(stage: 1, salt: 0, enabled: all, canAudio: true, canSynonym: true), ReviewMode.recognize);
+      expect(pick(0, 1), ReviewMode.recognize);
+      expect(pick(1, 2), ReviewMode.recognize);
     });
 
-    test('2–3 bosqich — Tanish va Audio navbatma-navbat', () {
-      expect(pickMode(stage: 2, salt: 0, enabled: all, canAudio: true, canSynonym: true), ReviewMode.recognize);
-      expect(pickMode(stage: 2, salt: 1, enabled: all, canAudio: true, canSynonym: true), ReviewMode.audio);
-      expect(pickMode(stage: 3, salt: 1, enabled: all, canAudio: false, canSynonym: true), ReviewMode.recognize);
+    test('2–3 bosqich — Tanish, Audio, Sinonim navbatma-navbat', () {
+      expect([for (var k = 0; k < 3; k++) pick(2, k)], [ReviewMode.recognize, ReviewMode.audio, ReviewMode.synonym]);
+      expect(pick(3, 1, audio: false), ReviewMode.synonym);
+      expect(pick(3, 2, syn: false), ReviewMode.recognize);
     });
 
-    test('4+ bosqich — Yozib va Sinonim', () {
-      expect(pickMode(stage: 4, salt: 0, enabled: all, canAudio: true, canSynonym: true), ReviewMode.produce);
-      expect(pickMode(stage: 5, salt: 1, enabled: all, canAudio: true, canSynonym: true), ReviewMode.synonym);
-      expect(pickMode(stage: 6, salt: 1, enabled: all, canAudio: true, canSynonym: false), ReviewMode.produce);
+    test("4+ bosqich — Yozib, Sinonim (yozib), Gap to'ldirish navbatma-navbat", () {
+      expect([for (var k = 0; k < 3; k++) pick(4, k)], [ReviewMode.produce, ReviewMode.synonym, ReviewMode.cloze]);
+      expect(pick(6, 1, syn: false), ReviewMode.cloze);
+      expect(pick(6, 2, cloze: false), ReviewMode.produce);
+      expect(synonymTyped(4), isTrue);
+      expect(synonymTyped(3), isFalse);
     });
 
     test("O'chirilgan rejim umuman chiqmaydi", () {
-      final noAudio = {ReviewMode.recognize, ReviewMode.produce, ReviewMode.synonym};
-      for (var stage = 0; stage <= 6; stage++) {
-        for (var salt = 0; salt < 4; salt++) {
-          expect(
-            pickMode(stage: stage, salt: salt, enabled: noAudio, canAudio: true, canSynonym: true),
-            isNot(ReviewMode.audio),
-          );
+      for (final off in ReviewMode.values) {
+        final enabled = all.difference({off});
+        for (var stage = 0; stage <= 6; stage++) {
+          for (var salt = 0; salt < 6; salt++) {
+            expect(pick(stage, salt, enabled: enabled), isNot(off), reason: '$off o\'chirilgan, stage $stage');
+          }
         }
       }
-      expect(
-        pickMode(stage: 0, salt: 0, enabled: {ReviewMode.produce}, canAudio: true, canSynonym: true),
-        ReviewMode.produce,
-      );
+      expect(pick(0, 0, enabled: {ReviewMode.produce}), ReviewMode.produce);
+    });
+  });
+
+  group('Sinonimlarni eslash', () {
+    const syn = ['mandatory', 'required', 'obligatory'];
+
+    test("Yarmidan ko'pi (yuqoriga yaxlitlab) eslansa — to'g'ri", () {
+      expect(synonymsRequired(1), 1);
+      expect(synonymsRequired(2), 1);
+      expect(synonymsRequired(3), 2);
+      expect(synonymsRequired(4), 2);
+      final r = checkSynonyms('Mandatory, obligatory', 'compulsory', syn);
+      expect(r.isCorrect, isTrue);
+      expect(r.recalled, ['mandatory', 'obligatory']);
+      expect(r.missed, ['required']);
+    });
+
+    test("Bitta eslansa (3 tadan) — yetarli emas; bitta harf xato qabul qilinadi", () {
+      final r = checkSynonyms('mandatary', 'compulsory', syn);
+      expect(r.recalled, ['mandatory']);
+      expect(r.isCorrect, isFalse);
+    });
+
+    test("So'zning o'zi va sinonim bo'lmagan javoblar hisoblanmaydi", () {
+      final r = checkSynonyms('compulsory; necessary / required', 'compulsory', syn);
+      expect(r.recalled, ['required']);
+      expect(r.wrong, ['necessary']);
+    });
+
+    test('Bitta javob ikki sinonimga hisoblanmaydi', () {
+      final r = checkSynonyms('lasting', 'sustainable', ['lasting', 'lastin']);
+      expect(r.recalled.length, 1);
+    });
+  });
+
+  group("Gapni to'ldirish", () {
+    test("Gapdagi shakl ham, lug'atdagi shakl ham qabul qilinadi", () {
+      expect(checkCloze('deteriorated', 'deteriorated', 'deteriorate', []).verdict, Verdict.correct);
+      expect(checkCloze('deteriorate', 'deteriorated', 'deteriorate', []).verdict, Verdict.correct);
+      expect(checkCloze('deterioratd', 'deteriorated', 'deteriorate', []).verdict, Verdict.almost);
+      expect(checkCloze('improved', 'deteriorated', 'deteriorate', ['worsen']).verdict, Verdict.wrong);
     });
   });
 

@@ -19,7 +19,7 @@ void main() {
     expect(audioKeyFromFileName('well-being (2).wav'), 'well being');
   });
 
-  test("v1 bazasi v2 ga ko'chadi: ma'lumot saqlanadi, audio ustuni qo'shiladi, oldin zaxira olinadi", () async {
+  test("v1 bazasi oxirgi versiyaga ko'chadi: ma'lumot saqlanadi, audio ustuni qo'shiladi, oldin zaxira olinadi", () async {
     final dir = await Directory.systemTemp.createTemp('sozlik_mig');
     final path = p.join(dir.path, 'sozlik.db');
     final f = databaseFactoryFfiNoIsolate;
@@ -65,6 +65,16 @@ void main() {
     expect(words.single.stage, 4);
     expect(words.single.nextDue, '2026-10-18');
     expect(words.single.audio, isNull);
+    expect(words.single.extraExamples, isEmpty);
+    expect(words.single.mnemonic, isNull);
+    await db.updateWord(
+      words.single.copyWith(extraExamples: const [Example('Jobs are scarce.', 'Ish kam.')], mnemonic: 'skers — kam'),
+    );
+    final w2 = (await db.allWords()).single;
+    expect(w2.examples.length, 1);
+    expect(w2.extraExamples.single.uz, 'Ish kam.');
+    expect(w2.mnemonic, 'skers — kam');
+    expect((await db.loadSettings()).modeCloze, isTrue);
     await db.updateWord(words.single.copyWith(audio: 'scarce_1.mp3'));
     expect((await db.allWords()).single.audio, 'scarce_1.mp3');
     final backups = Directory(p.join(dir.path, 'backups')).listSync();

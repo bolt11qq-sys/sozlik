@@ -14,6 +14,7 @@ AppIcons modeIcon(ReviewMode m) => switch (m) {
   ReviewMode.produce => AppIcons.pencil,
   ReviewMode.synonym => AppIcons.swap,
   ReviewMode.audio => AppIcons.ear,
+  ReviewMode.cloze => AppIcons.gap,
 };
 
 Color modeColor(AppColors c, ReviewMode m) => switch (m) {
@@ -21,6 +22,7 @@ Color modeColor(AppColors c, ReviewMode m) => switch (m) {
   ReviewMode.produce => c.produce,
   ReviewMode.synonym => c.synonym,
   ReviewMode.audio => c.audio,
+  ReviewMode.cloze => c.cloze,
 };
 
 /// Keyingi takrorlashgacha qolgan vaqt matni.

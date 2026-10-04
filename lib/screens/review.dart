@@ -221,6 +221,8 @@ class _CardViewState extends State<_CardView> {
   ReviewStore get s => widget.store;
   Word get w => widget.word;
   ReviewMode get mode => widget.card.mode;
+  Example? get _ex => widget.card.example(w);
+  bool get _typedSyn => mode == ReviewMode.synonym && widget.card.typed;
 
   @override
   void initState() {
@@ -238,7 +240,8 @@ class _CardViewState extends State<_CardView> {
   }
 
   void _playExample({bool slow = false}) {
-    if (w.hasExample) Tts.instance.speak(w.example!, slow: slow);
+    final e = _ex;
+    if (e != null) Tts.instance.speak(e.en, slow: slow);
   }
 
   Future<void> _submit() async {
@@ -247,7 +250,11 @@ class _CardViewState extends State<_CardView> {
       return;
     }
     if (_input.text.trim().isEmpty) return;
-    await s.submitTyped(_input.text);
+    if (_typedSyn) {
+      await s.submitSynonyms(_input.text);
+    } else {
+      await s.submitTyped(_input.text);
+    }
     HapticFeedback.lightImpact();
   }
 
@@ -259,7 +266,8 @@ class _CardViewState extends State<_CardView> {
       ReviewMode.recognize => _recognize(c),
       ReviewMode.produce => _produce(c),
       ReviewMode.audio => _audio(c),
-      ReviewMode.synonym => _synonym(c),
+      ReviewMode.synonym => _typedSyn ? _synonymTyped(c) : _synonym(c),
+      ReviewMode.cloze => _cloze(c),
     };
 
     final List<Widget> buttons;
@@ -286,7 +294,7 @@ class _CardViewState extends State<_CardView> {
             ? BigButton(label: 'Bilaman', icon: AppIcons.check, height: 54, onTap: () => s.answerRecognize(true))
             : BigButton(label: "Ko'rsatish", icon: AppIcons.book, height: 54, onTap: s.reveal),
       ];
-    } else if (mode == ReviewMode.produce) {
+    } else if (mode == ReviewMode.produce || mode == ReviewMode.cloze || _typedSyn) {
       buttons = [
         BigButton(label: "Javobni ko'rsatish", kind: ButtonKind.secondary, onTap: s.giveUp),
         ListenableBuilder(
@@ -334,7 +342,8 @@ class _CardViewState extends State<_CardView> {
   );
 
   Widget _exampleBox(AppColors c, {bool showUz = true}) {
-    if (!w.hasExample) {
+    final e = _ex;
+    if (e == null) {
       return Pressable(
         onTap: widget.onEdit,
         color: c.soft(c.amber),
@@ -360,13 +369,21 @@ class _CardViewState extends State<_CardView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ExampleText(example: w.example!, word: w.en),
-          if (showUz && (w.exampleUz ?? '').isNotEmpty) ...[
+          if (w.examples.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Text(
+                'MISOL ${widget.card.exampleIndex.clamp(0, w.examples.length - 1) + 1} / ${w.examples.length}',
+                style: T.caps(c.sec),
+              ),
+            ),
+          ExampleText(example: e.en, word: w.en),
+          if (showUz && (e.uz ?? '').isNotEmpty) ...[
             const SizedBox(height: 9),
-            Text(w.exampleUz!, style: T.text(12, color: c.sec, height: 1.45)),
+            Text(e.uz!, style: T.text(12, color: c.sec, height: 1.45)),
           ],
           const SizedBox(height: 9),
-          _ListenRow(text: w.example!),
+          _ListenRow(text: e.en),
         ],
       ),
     );
@@ -378,6 +395,31 @@ class _CardViewState extends State<_CardView> {
       if (widget.card.practice) Pill('mashq', color: c.violet) else Pill(stageText(w.stage), color: c.sec),
     ];
     return Wrap(spacing: 8, runSpacing: 8, children: items);
+  }
+
+  /// Foydalanuvchining o'z eslatmasi (mnemonika) — javobdan keyin ko'rinadi.
+  Widget _mnemonic(AppColors c) {
+    if (!w.hasMnemonic) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(color: c.soft(c.amber), borderRadius: BorderRadius.circular(14)),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AppIcon(AppIcons.bulb, size: 18, color: c.amber),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(w.mnemonic!, style: T.text(13.5, color: c.ink, height: 1.5)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 3+ marta unutilgan so'z: o'z bog'lanishingizni yozish taklifi.
+  Widget _mnemonicPrompt(AppColors c) {
+    if (!s.suggestMnemonic) return const SizedBox.shrink();
+    return _MnemonicPrompt(word: w, onSave: (t) => s.app.setMnemonic(w.id!, t));
   }
 
   Widget _sentences(AppColors c) {
@@ -483,9 +525,11 @@ class _CardViewState extends State<_CardView> {
           ),
         ),
         _exampleBox(c, showUz: shown),
+        if (shown) _mnemonic(c),
         if (shown) _sentences(c),
         _tags(c),
       ]),
+      if (s.suggestMnemonic) ...[const SizedBox(height: 12), _mnemonicPrompt(c)],
       _nextInfo(c),
     ];
   }
@@ -495,7 +539,7 @@ class _CardViewState extends State<_CardView> {
   List<Widget> _produce(AppColors c) {
     final answered = s.phase == CardPhase.answered;
     final check = s.check;
-    final masked = maskExample(w.example, w.en);
+    final masked = maskExample(_ex?.en, w.en);
     final verdictColor = switch (check?.verdict) {
       Verdict.correct => c.accent,
       Verdict.almost => c.amber,
@@ -511,8 +555,8 @@ class _CardViewState extends State<_CardView> {
         ),
         if (masked != null && !answered)
           Text(masked.withPlaceholder('___'), style: T.text(13, color: c.sec, height: 1.5))
-        else if (!answered && (w.exampleUz ?? '').isNotEmpty)
-          Text(w.exampleUz!, style: T.text(13, color: c.sec, height: 1.5)),
+        else if (!answered && (_ex?.uz ?? '').isNotEmpty)
+          Text(_ex!.uz!, style: T.text(13, color: c.sec, height: 1.5)),
         if (w.pos != null && !answered) Text(kPosLabels[w.pos] ?? '', style: T.text(12, color: c.sec)),
         _divider(c),
         Text('INGLIZCHASINI YOZING', style: T.caps(c.sec)),
@@ -555,8 +599,10 @@ class _CardViewState extends State<_CardView> {
             style: T.text(12, color: c.sec, height: 1.5),
           ),
         if (answered) _exampleBox(c),
+        if (answered) _mnemonic(c),
         if (answered) _sentences(c),
       ], gap: 12),
+      if (s.suggestMnemonic) ...[const SizedBox(height: 12), _mnemonicPrompt(c)],
       if (!answered) ...[
         const SizedBox(height: 16),
         const HintCard(text: "Yozib javob berish eng kuchli mashq: so'zni tanishdan ishlatishga o'tkazadi."),
@@ -569,7 +615,7 @@ class _CardViewState extends State<_CardView> {
 
   List<Widget> _audio(AppColors c) {
     final answered = s.phase == CardPhase.answered;
-    final masked = maskExample(w.example, w.en);
+    final masked = maskExample(_ex?.en, w.en);
     final correct = s.correctOption(w, widget.card);
     return [
       ..._section(c, [
@@ -581,7 +627,7 @@ class _CardViewState extends State<_CardView> {
           child: ValueListenableBuilder<String?>(
             valueListenable: Tts.instance.speaking,
             builder: (_, now, _) {
-              final playing = now != null && now == w.example;
+              final playing = now != null && now == _ex?.en;
               return Semantics(
                 button: true,
                 label: 'Gapni tinglash',
@@ -653,7 +699,7 @@ class _CardViewState extends State<_CardView> {
             ),
           ),
         if (answered) ...[
-          if ((w.exampleUz ?? '').isNotEmpty) Text(w.exampleUz!, style: T.text(12, color: c.sec, height: 1.45)),
+          if ((_ex?.uz ?? '').isNotEmpty) Text(_ex!.uz!, style: T.text(12, color: c.sec, height: 1.45)),
           Text(
             '${w.en} — ${w.uz}',
             style: T.text(15, w: FontWeight.w700, color: c.ink),
@@ -696,11 +742,11 @@ class _CardViewState extends State<_CardView> {
           ],
         ),
         Text('${w.en} = ?', style: T.text(13, color: c.sec)),
-        if (w.hasExample)
+        if (_ex != null)
           Container(
             padding: const EdgeInsets.all(13),
             decoration: BoxDecoration(color: c.bg, borderRadius: BorderRadius.circular(14)),
-            child: ExampleText(example: w.example!, word: w.en),
+            child: ExampleText(example: _ex!.en, word: w.en),
           ),
         if (answered) ...[
           _divider(c),
@@ -713,6 +759,155 @@ class _CardViewState extends State<_CardView> {
       ]),
       const SizedBox(height: 16),
       _Options(store: s, card: widget.card, correct: correct),
+      _nextInfo(c),
+    ];
+  }
+
+  Widget _inputField(AppColors c, {required String hint, required Color verdictColor, int lines = 1}) {
+    final answered = s.phase == CardPhase.answered;
+    return TextField(
+      controller: _input,
+      focusNode: _focus,
+      autofocus: true,
+      readOnly: answered,
+      minLines: lines,
+      maxLines: lines,
+      autocorrect: false,
+      enableSuggestions: false,
+      enableIMEPersonalizedLearning: false,
+      textCapitalization: TextCapitalization.none,
+      keyboardType: lines > 1 ? TextInputType.text : TextInputType.visiblePassword,
+      textInputAction: TextInputAction.done,
+      onSubmitted: (_) => _submit(),
+      style: T.text(lines > 1 ? 17 : 20, w: FontWeight.w700, color: answered ? verdictColor : c.ink),
+      cursorColor: c.accent,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: c.bg,
+        hintText: hint,
+        hintStyle: T.text(lines > 1 ? 15 : 18, color: c.sec.withAlpha(0x99), w: FontWeight.w500),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: answered ? verdictColor : c.line, width: 2),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: answered ? verdictColor : c.accent, width: 2),
+        ),
+      ),
+    );
+  }
+
+  // ───── Sinonimlarni yozib eslash ─────
+
+  List<Widget> _synonymTyped(AppColors c) {
+    final answered = s.phase == CardPhase.answered;
+    final r = s.recall;
+    final need = synonymsRequired(w.synonyms.length);
+    return [
+      ..._section(c, [
+        _cardTop(c, 'Sinonimlarini eslang'),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                w.en,
+                style: T.text(30, w: FontWeight.w700, color: c.ink, spacing: -0.5),
+              ),
+            ),
+            SpeakButton.word(w, size: 20),
+          ],
+        ),
+        Text(
+          '${w.uz} · ${w.synonyms.length} ta sinonim, kamida $need tasini yozing',
+          style: T.text(13, color: c.sec, height: 1.5),
+        ),
+        _divider(c),
+        Text('SINONIMLARINI YOZING', style: T.caps(c.sec)),
+        _inputField(
+          c,
+          hint: 'vergul bilan: …, …',
+          lines: 2,
+          verdictColor: r == null ? c.accent : (r.isCorrect ? c.accent : c.red),
+        ),
+        if (answered && r != null) _RecallFeedback(recall: r),
+        if (answered) _exampleBox(c),
+        if (answered) _mnemonic(c),
+      ], gap: 12),
+      if (!answered) ...[
+        const SizedBox(height: 16),
+        const HintCard(
+          icon: AppIcons.swap,
+          text:
+              "Sinonimlarni yordamsiz eslash ularni passiv bilimdan faol lug'atga o'tkazadi — "
+              "Writing va Speaking'da so'z takrorlanmasligi uchun kerak.",
+        ),
+      ],
+      if (s.suggestMnemonic) ...[const SizedBox(height: 12), _mnemonicPrompt(c)],
+      _nextInfo(c),
+    ];
+  }
+
+  // ───── Gapni to'ldirish ─────
+
+  List<Widget> _cloze(AppColors c) {
+    final answered = s.phase == CardPhase.answered;
+    final check = s.check;
+    final m = maskExample(_ex?.en, w.en);
+    final verdictColor = switch (check?.verdict) {
+      Verdict.correct => c.accent,
+      Verdict.almost => c.amber,
+      Verdict.wrong => c.red,
+      null => c.accent,
+    };
+    return [
+      ..._section(c, [
+        _cardTop(c, "Gapni to'ldiring"),
+        if (m != null)
+          Text.rich(
+            TextSpan(
+              style: T.text(18, color: c.ink, height: 1.6, w: FontWeight.w500),
+              children: [
+                TextSpan(text: m.before),
+                WidgetSpan(
+                  alignment: PlaceholderAlignment.middle,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: c.soft(answered ? verdictColor : c.cloze),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      answered ? m.hidden : '_____',
+                      style: T.text(18, w: FontWeight.w700, color: answered ? verdictColor : c.cloze),
+                    ),
+                  ),
+                ),
+                TextSpan(text: m.after),
+              ],
+            ),
+          ),
+        Text('Ishora: ${w.uz}${w.pos != null ? ' · ${kPosLabels[w.pos] ?? ''}' : ''}', style: T.text(13, color: c.sec)),
+        if (answered && (_ex?.uz ?? '').isNotEmpty) Text(_ex!.uz!, style: T.text(12.5, color: c.sec, height: 1.45)),
+        _divider(c),
+        Text("BO'SH JOYGA SO'ZNI YOZING", style: T.caps(c.sec)),
+        _inputField(c, hint: "so'z (kerakli shaklda)…", verdictColor: verdictColor),
+        if (answered && check != null) _Feedback(check: check, input: s.chosen, word: w),
+        if (answered && _ex != null) _ListenRow(text: _ex!.en),
+        if (answered) _mnemonic(c),
+      ], gap: 12),
+      if (!answered) ...[
+        const SizedBox(height: 16),
+        const HintCard(
+          icon: AppIcons.gap,
+          text:
+              "Gap ichida so'zni to'g'ri shaklda yozish — Multilevel imtihonidagi topshiriqning o'zi. "
+              "Lug'atdagi shakl ham qabul qilinadi.",
+        ),
+      ],
+      if (s.suggestMnemonic) ...[const SizedBox(height: 12), _mnemonicPrompt(c)],
       _nextInfo(c),
     ];
   }
@@ -1000,6 +1195,7 @@ class _NothingToReview extends StatelessWidget {
       SessionKind.daily => ('Hozircha takrorlash yo\'q', "Bugungi reja bajarilgan. Ertaga yangi so'zlar kutadi."),
       SessionKind.hard => ("Qiyin so'z yo'q", "3 marta xato qilingan so'zlar shu yerga avtomatik tushadi."),
       SessionKind.tag => ("Bu tegda so'z yo'q", "Boshqa tegni tanlang."),
+      SessionKind.recap => ("Bugun yangi so'z yo'q", "Kechki takrorlash bugun boshlangan so'zlar uchun."),
     };
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -1097,6 +1293,138 @@ class _Summary extends StatelessWidget {
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Sinonimlarni eslash natijasi: eslangan / unutilgan / ortiqcha.
+class _RecallFeedback extends StatelessWidget {
+  const _RecallFeedback({required this.recall});
+
+  final SynonymRecall recall;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    final ok = recall.isCorrect;
+    final color = ok ? c.accent : c.red;
+    Widget chip(String t, Color col, AppIcons icon) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(color: c.soft(col), borderRadius: BorderRadius.circular(999)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIcon(icon, size: 13, color: col, stroke: 2.4),
+          const SizedBox(width: 5),
+          Text(
+            t,
+            style: T.text(13, w: FontWeight.w600, color: col),
+          ),
+        ],
+      ),
+    );
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(color: c.soft(color), borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            ok
+                ? "Yaxshi: ${recall.recalled.length} / ${recall.recalled.length + recall.missed.length} ta sinonim eslandi."
+                : "Yetarli emas: ${recall.recalled.length} ta eslandi, kamida ${recall.required} ta kerak edi.",
+            style: T.text(13, color: c.ink, height: 1.45, w: FontWeight.w500),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final x in recall.recalled) chip(x, c.accent, AppIcons.check),
+              for (final x in recall.missed) chip(x, c.red, AppIcons.close),
+            ],
+          ),
+          if (recall.wrong.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text("Sinonim emas: ${recall.wrong.join(', ')}", style: T.text(12, color: c.sec)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// "Bu so'zni 3 marta unutdingiz — o'z bog'lanishingizni yozing."
+class _MnemonicPrompt extends StatefulWidget {
+  const _MnemonicPrompt({required this.word, required this.onSave});
+
+  final Word word;
+  final Future<void> Function(String) onSave;
+
+  @override
+  State<_MnemonicPrompt> createState() => _MnemonicPromptState();
+}
+
+class _MnemonicPromptState extends State<_MnemonicPrompt> {
+  final _ctrl = TextEditingController();
+  bool _saved = false;
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.c;
+    if (_saved) {
+      return HintCard(
+        icon: AppIcons.bulb,
+        color: c.accent,
+        text: "Eslatma saqlandi — keyingi safar xato qilsangiz ko'rinadi.",
+      );
+    }
+    return HintCard(
+      icon: AppIcons.bulb,
+      text:
+          "\"${widget.word.en}\" ${widget.word.wrongCount} marta unutildi. O'zingiz o'ylab topgan bog'lanish "
+          "eng uzoq saqlanadi: tovush o'xshashligi, rasm, hikoya.",
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TextField(
+            controller: _ctrl,
+            minLines: 1,
+            maxLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+            style: T.text(14, color: c.ink),
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: c.bg,
+              hintText: 'masalan: reluctant — "re-lak": lak surishni istamaydi',
+              hintStyle: T.text(13, color: c.sec.withAlpha(0x99)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            ),
+          ),
+          const SizedBox(height: 10),
+          ListenableBuilder(
+            listenable: _ctrl,
+            builder: (_, _) => BigButton(
+              label: 'Eslatmani saqlash',
+              icon: AppIcons.bulb,
+              height: 46,
+              onTap: _ctrl.text.trim().isEmpty
+                  ? null
+                  : () async {
+                      await widget.onSave(_ctrl.text);
+                      if (mounted) setState(() => _saved = true);
+                    },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

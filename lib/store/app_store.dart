@@ -58,6 +58,9 @@ class AppStore extends ChangeNotifier {
   final Map<int, List<Sentence>> _sentences = {};
   Map<String, int> _reviewedByDay = {};
   Map<String, int> _newByDay = {};
+
+  /// Bugun birinchi marta takrorlangan (yangi) so'zlar — kechki takrorlash uchun.
+  Set<int> _newToday = {};
   DayStat? _todayStat;
   String? _statDay;
   bool loaded = false;
@@ -83,6 +86,7 @@ class AppStore extends ChangeNotifier {
     }
     _reviewedByDay = await db.reviewedByDay();
     _newByDay = {for (final d in await db.dayStatsSince(addDays(today, -30))) d.day: d.newLearned};
+    _newToday = await db.newWordIdsOn(today);
     await _loadTodayStat();
     await db.setLastOpenedDay(today);
     loaded = true;
@@ -325,6 +329,7 @@ class AppStore extends ChangeNotifier {
           uz: e.uz,
           synonyms: e.synonyms,
           example: e.example,
+          extraExamples: [for (final x in e.moreExamples) Example(x)],
           tags: tags,
           nextDue: today,
           createdAt: now,
@@ -392,10 +397,17 @@ class AppStore extends ChangeNotifier {
     enabled: s.enabledModes,
     canAudio: canAudio(w),
     canSynonym: canSynonym(w),
+    canCloze: canCloze(w),
   );
 
-  bool canAudio(Word w) => maskExample(w.example, w.en) != null && _words.length >= 4;
-  bool canSynonym(Word w) => w.synonyms.isNotEmpty && _words.length >= 4;
+  /// Biror misol gapida so'z topiladimi.
+  bool hasMaskableExample(Word w) => w.examples.any((e) => maskExample(e.en, w.en) != null);
+
+  bool canAudio(Word w) => hasMaskableExample(w) && _words.length >= 4;
+  bool canCloze(Word w) => hasMaskableExample(w);
+
+  /// Sinonimni tanlash uchun variantlar kerak; yozib eslash uchun — yo'q.
+  bool canSynonym(Word w) => w.synonyms.isNotEmpty && (w.stage >= 4 || _words.length >= 4);
 
   // ───────────── javoblar ─────────────
 
@@ -436,6 +448,7 @@ class AppStore extends ChangeNotifier {
     final logId = await db.recordAnswer(log: log, word: next, stat: stat);
     _reviewedByDay[d] = stat.reviewed;
     _newByDay[d] = stat.newLearned;
+    if (!practice && prev.isNew) _newToday.add(wordId);
     _changed(reschedule: true);
     return AnswerReceipt(logId: logId, previous: prev, previousStat: prevStat);
   }
@@ -447,7 +460,33 @@ class AppStore extends ChangeNotifier {
     _statDay = r.previousStat.day;
     _reviewedByDay[r.previousStat.day] = r.previousStat.reviewed;
     _newByDay[r.previousStat.day] = r.previousStat.newLearned;
+    if (r.previous.isNew) _newToday.remove(r.previous.id);
     _changed(reschedule: true);
+  }
+
+  // ───────────── kechki takrorlash ─────────────
+
+  /// Bugun boshlangan yangi so'zlar (hali faol).
+  List<Word> get recapWords => [
+    for (final id in _newToday)
+      if (_words[id] != null && !_words[id]!.isArchived) _words[id]!,
+  ];
+
+  /// Kechki takrorlashni taklif qilish vaqti: 18:00 dan keyin, bugun hali qilinmagan.
+  bool get recapDue => recapWords.length >= 3 && DateTime.now().hour >= 18 && settings.recapDay != today;
+
+  void markRecapDone() {
+    settings.recapDay = today;
+    _changed();
+  }
+
+  // ───────────── eslatma (mnemonika) ─────────────
+
+  Future<void> setMnemonic(int id, String text) async {
+    final w = _words[id];
+    if (w == null) return;
+    final t = text.trim();
+    await updateWord(t.isEmpty ? w.copyWith(clearMnemonic: true) : w.copyWith(mnemonic: t));
   }
 
   // ───────────── gaplar (2-bosqich) ─────────────

@@ -185,6 +185,30 @@ void main() {
       const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.synonym),
       '04b_review_synonym',
     );
+    await shot(
+      tester,
+      app,
+      const ReviewScreen(kind: SessionKind.hard, mode: ReviewMode.synonym),
+      '15_synonym_typed',
+      act: (t) async {
+        await t.enterText(find.byType(TextField), 'basic, wrongword');
+        await t.pump();
+        await t.tap(find.text('Tekshirish'));
+      },
+    );
+    await shot(tester, app, const ReviewScreen(kind: SessionKind.hard, mode: ReviewMode.cloze), '16_cloze');
+    await shot(
+      tester,
+      app,
+      const ReviewScreen(kind: SessionKind.hard, mode: ReviewMode.cloze),
+      '17_cloze_answered',
+      act: (t) async {
+        await t.enterText(find.byType(TextField), 'x');
+        await t.pump();
+        await t.tap(find.text("Javobni ko'rsatish"));
+      },
+    );
+    await shot(tester, app, const ReviewScreen(kind: SessionKind.recap), '18_recap');
     await shot(tester, app, const Shell(), '05_words', act: (t) async => t.tap(find.text("So'zlar").last));
     await shot(tester, app, const Shell(), '05b_words_select', act: (t) async {
       await t.tap(find.text("So'zlar").last);

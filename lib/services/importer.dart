@@ -6,13 +6,23 @@
 import '../models/word.dart';
 
 class ImportEntry {
-  const ImportEntry({required this.lineNo, required this.en, required this.uz, this.synonyms = const [], this.example});
+  const ImportEntry({
+    required this.lineNo,
+    required this.en,
+    required this.uz,
+    this.synonyms = const [],
+    this.example,
+    this.moreExamples = const [],
+  });
 
   final int lineNo;
   final String en;
   final String uz;
   final List<String> synonyms;
   final String? example;
+
+  /// Ikkinchi va keyingi misollar (`|` bilan ajratilgan).
+  final List<String> moreExamples;
 
   String get key => Word.normalizeKey(en);
 }
@@ -97,12 +107,16 @@ ImportPreview parseImport(String text, Set<String> existingKeys) {
       errors.add(ImportError(i + 1, line, "So'z juda uzun"));
       continue;
     }
+    final examples = parts.length > 3
+        ? parts[3].split('|').map((e) => e.trim()).where((e) => e.isNotEmpty).toList()
+        : const <String>[];
     final entry = ImportEntry(
       lineNo: i + 1,
       en: en.replaceAll(RegExp(r'\s+'), ' '),
       uz: uz,
       synonyms: parts.length > 2 ? Word.splitList(parts[2]) : const [],
-      example: parts.length > 3 && parts[3].isNotEmpty ? parts[3] : null,
+      example: examples.isEmpty ? null : examples.first,
+      moreExamples: examples.skip(1).toList(),
     );
     if (seen.contains(entry.key)) {
       dups.add(entry);

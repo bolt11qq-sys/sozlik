@@ -17,13 +17,16 @@ enum SessionKind {
 
   /// Teg bo'yicha alohida seans (3-bosqich) — jadvalni o'zgartirmaydi.
   tag,
+
+  /// Kechki takrorlash: bugun boshlangan yangi so'zlar — jadvalni o'zgartirmaydi.
+  recap,
 }
 
 enum CardPhase { question, revealed, answered }
 
-/// Seansdagi bitta kartochka. Variantlar kartochka yaratilganda bir marta
-/// tanlanadi; to'g'ri javob esa so'zning joriy holatidan olinadi — shuning
-/// uchun takrorlash paytida tahrirlangan so'z darhol yangilanadi.
+/// Seansdagi bitta kartochka. Variantlar va misol gap kartochka yaratilganda
+/// bir marta tanlanadi; to'g'ri javob esa so'zning joriy holatidan olinadi —
+/// shuning uchun takrorlash paytida tahrirlangan so'z darhol yangilanadi.
 class ReviewCard {
   ReviewCard({
     required this.wordId,
@@ -31,6 +34,8 @@ class ReviewCard {
     required this.practice,
     this.distractors = const [],
     this.seed = 0,
+    this.exampleIndex = 0,
+    this.typed = false,
   });
 
   final int wordId;
@@ -39,11 +44,24 @@ class ReviewCard {
   final List<String> distractors;
   final int seed;
 
+  /// So'zning qaysi misol gapi ko'rsatiladi (har takrorlashda boshqasi).
+  final int exampleIndex;
+
+  /// Sinonim rejimi: `true` — sinonimlarni yozib eslash, `false` — tanlash.
+  final bool typed;
+
   /// Variantlar tartibi: to'g'ri javob [seed] bo'yicha joylashadi.
   List<String> options(String correct) {
     final list = List.of(distractors);
     list.insert(seed % (list.length + 1), correct);
     return list;
+  }
+
+  /// Shu kartochkaning misol gapi (so'z tahrirlangan bo'lsa ham xavfsiz).
+  Example? example(Word w) {
+    final list = w.examples;
+    if (list.isEmpty) return null;
+    return list[exampleIndex.clamp(0, list.length - 1)];
   }
 }
 
@@ -74,17 +92,26 @@ class ReviewStore extends ChangeNotifier {
   static const undoWindow = Duration(seconds: 10);
   static const _maxRepeats = 2;
 
+  /// Yangi so'z to'g'ri topilsa, shuncha kartochkadan keyin yana chiqadi
+  /// (o'sha kuni qayta ko'rish — yangi so'z eng tez birinchi soatlarda unutiladi).
+  static const learningGap = 6;
+
   List<ReviewCard> _queue = [];
   int _index = 0;
   int correctCount = 0;
   int wrongCount = 0;
   final Map<int, int> _repeats = {};
+  final Set<int> _learningShown = {};
   bool _busy = false;
 
   CardPhase phase = CardPhase.question;
   AnswerCheck? check;
+  SynonymRecall? recall;
   String? chosen;
   bool? lastCorrect;
+
+  /// Shu javobdan keyin so'z 3+ marta unutilgan va eslatmasi yo'q bo'lsa — taklif.
+  bool suggestMnemonic = false;
 
   _Snapshot? _undo;
   DateTime? _undoUntil;
@@ -95,6 +122,10 @@ class ReviewStore extends ChangeNotifier {
   int get index => _index;
   int get total => _queue.length;
   ReviewCard? get card => finished ? null : _queue[_index];
+
+  /// Navbatdagi [i]-kartochka (testlar va oldindan ko'rish uchun).
+  @visibleForTesting
+  ReviewCard? cardAt(int i) => i >= 0 && i < _queue.length ? _queue[i] : null;
   Word? get word => card == null ? null : app.word(card!.wordId);
 
   double get progress => total == 0 ? 0 : (_index / total).clamp(0, 1);
@@ -105,6 +136,7 @@ class ReviewStore extends ChangeNotifier {
   String get title => switch (kind) {
     SessionKind.hard => "Qiyin so'zlar",
     SessionKind.tag => tag ?? 'Teg',
+    SessionKind.recap => 'Kechki takrorlash',
     SessionKind.daily => card?.mode.label ?? 'Takrorlash',
   };
 
@@ -116,6 +148,7 @@ class ReviewStore extends ChangeNotifier {
       SessionKind.daily =>
         forceMode == null ? app.plan.ids : app.plan.ids.where((id) => app.modeFor(app.word(id)!) == forceMode).toList(),
       SessionKind.hard => (app.difficultWords.map((w) => w.id!).toList()..shuffle(_rng)),
+      SessionKind.recap => (app.recapWords.map((w) => w.id!).toList()..shuffle(_rng)),
       SessionKind.tag =>
         (app.activeWords
             .where((w) => w.tags.any((t) => t.toLowerCase() == tag?.toLowerCase()))
@@ -123,7 +156,7 @@ class ReviewStore extends ChangeNotifier {
             .toList()
           ..shuffle(_rng)),
     };
-    final cap = min(ids.length, limit ?? (kind == SessionKind.daily ? ids.length : 40));
+    final cap = min(ids.length, limit ?? (kind == SessionKind.daily || kind == SessionKind.recap ? ids.length : 40));
     _queue = [for (final id in ids.take(cap)) _makeCard(id, practice: kind != SessionKind.daily)];
     _index = 0;
     phase = CardPhase.question;
@@ -134,14 +167,36 @@ class ReviewStore extends ChangeNotifier {
     final w = app.word(id)!;
     var m = mode ?? _modeFor(w);
     var distractors = const <String>[];
+    final typed = m == ReviewMode.synonym && synonymTyped(kind == SessionKind.hard ? 4 : w.stage);
     if (m == ReviewMode.audio) {
       distractors = _audioDistractors(w);
       if (distractors.length < 3) m = _fallback(w, ReviewMode.audio);
-    } else if (m == ReviewMode.synonym) {
+    } else if (m == ReviewMode.synonym && !typed) {
       distractors = _synonymDistractors(w);
       if (distractors.length < 3) m = _fallback(w, ReviewMode.synonym);
     }
-    return ReviewCard(wordId: id, mode: m, practice: practice, distractors: distractors, seed: _rng.nextInt(1 << 20));
+    return ReviewCard(
+      wordId: id,
+      mode: m,
+      practice: practice,
+      distractors: distractors,
+      seed: _rng.nextInt(1 << 20),
+      exampleIndex: _pickExample(w, needMask: m == ReviewMode.audio || m == ReviewMode.cloze),
+      typed: m == ReviewMode.synonym && typed,
+    );
+  }
+
+  /// Misollar navbat bilan almashadi; audio va to'ldirish uchun so'z topiladigan gap kerak.
+  int _pickExample(Word w, {required bool needMask}) {
+    final list = w.examples;
+    if (list.length <= 1) return 0;
+    final salt = w.correctCount + w.wrongCount;
+    final candidates = [
+      for (var i = 0; i < list.length; i++)
+        if (!needMask || maskExample(list[i].en, w.en) != null) i,
+    ];
+    if (candidates.isEmpty) return 0;
+    return candidates[salt % candidates.length];
   }
 
   /// Variantlar yetmasa — o'chirilmagan, variant talab qilmaydigan rejim.
@@ -153,6 +208,7 @@ class ReviewStore extends ChangeNotifier {
         : app.s.enabledModes.difference({failed}),
     canAudio: false,
     canSynonym: false,
+    canCloze: app.canCloze(w),
   );
 
   ReviewMode _modeFor(Word w) {
@@ -160,18 +216,32 @@ class ReviewStore extends ChangeNotifier {
       final ok = switch (forceMode!) {
         ReviewMode.audio => app.canAudio(w),
         ReviewMode.synonym => app.canSynonym(w),
+        ReviewMode.cloze => app.canCloze(w),
         _ => true,
       };
       if (ok) return forceMode!;
     }
+    final salt = w.correctCount + w.wrongCount;
     if (kind == SessionKind.hard) {
-      // Qiyin so'zlarni faol eslash bilan mashq qilamiz: yozib yoki sinonim.
+      // Qiyin so'zlarni faol eslash bilan mashq qilamiz: yozib, sinonim, gap.
       return pickMode(
         stage: 4,
-        salt: w.correctCount + w.wrongCount,
+        salt: salt,
         enabled: app.s.enabledModes,
         canAudio: app.canAudio(w),
         canSynonym: app.canSynonym(w),
+        canCloze: app.canCloze(w),
+      );
+    }
+    if (kind == SessionKind.recap) {
+      // Bugungi yangi so'zlar: tanish, audio va sinonimni aralash.
+      return pickMode(
+        stage: 2,
+        salt: salt + _rng.nextInt(3),
+        enabled: app.s.enabledModes,
+        canAudio: app.canAudio(w),
+        canSynonym: app.canSynonym(w),
+        canCloze: app.canCloze(w),
       );
     }
     return app.modeFor(w);
@@ -250,39 +320,60 @@ class ReviewStore extends ChangeNotifier {
     if (_busy || c == null || phase == CardPhase.answered) return;
     final wasRevealed = phase == CardPhase.revealed;
     await _record(c, knew, answerText: knew ? 'bilaman' : 'bilmadim');
-    if (wasRevealed) {
+    if (wasRevealed && !suggestMnemonic) {
       _advance();
     } else {
-      // Ochilmasdan "Bilmadim" — javobni ko'rsatamiz, keyin davom etadi.
+      // Ochilmasdan "Bilmadim" (yoki eslatma taklifi) — javob ko'rinib turadi.
       phase = CardPhase.answered;
       notifyListeners();
     }
   }
 
-  /// Ishlab chiqarish (yozib) rejimi.
+  /// Yozib va "gapni to'ldirish" rejimlari.
   Future<void> submitTyped(String input) async {
     final c = card;
     final w = word;
     if (c == null || w == null || phase == CardPhase.answered) return;
     if (input.trim().isEmpty) return;
-    check = checkAnswer(input, w.en, w.synonyms);
+    if (c.mode == ReviewMode.cloze) {
+      final m = maskExample(c.example(w)?.en, w.en);
+      check = checkCloze(input, m?.hidden ?? w.en, w.en, w.synonyms);
+    } else {
+      check = checkAnswer(input, w.en, w.synonyms);
+    }
     chosen = input.trim();
     phase = CardPhase.answered;
     await _record(c, check!.isCorrect, answerText: chosen);
   }
 
-  /// Yozib rejimida "Javobni ko'rsatish" — xato hisoblanadi.
+  /// Sinonimlarni yozib eslash.
+  Future<void> submitSynonyms(String input) async {
+    final c = card;
+    final w = word;
+    if (c == null || w == null || phase == CardPhase.answered) return;
+    if (input.trim().isEmpty) return;
+    recall = checkSynonyms(input, w.en, w.synonyms);
+    chosen = input.trim();
+    phase = CardPhase.answered;
+    await _record(c, recall!.isCorrect, answerText: chosen);
+  }
+
+  /// Yozib rejimlarida "Javobni ko'rsatish" — xato hisoblanadi.
   Future<void> giveUp() async {
     final c = card;
     final w = word;
     if (c == null || w == null || phase == CardPhase.answered) return;
-    check = AnswerCheck(Verdict.wrong, expected: w.en);
+    if (c.mode == ReviewMode.synonym && c.typed) {
+      recall = checkSynonyms('', w.en, w.synonyms);
+    } else {
+      check = AnswerCheck(Verdict.wrong, expected: w.en);
+    }
     chosen = null;
     phase = CardPhase.answered;
     await _record(c, false, answerText: null);
   }
 
-  /// Audio va sinonim rejimlari: variant tanlash.
+  /// Audio va sinonim (tanlash) rejimlari: variant tanlash.
   Future<void> choose(String option) async {
     final c = card;
     final w = word;
@@ -300,6 +391,7 @@ class ReviewStore extends ChangeNotifier {
     final snapshotIndex = _index;
     final snapCorrect = correctCount, snapWrong = wrongCount;
     final snapRepeats = Map.of(_repeats);
+    final wasNew = app.word(c.wordId)?.isNew ?? false;
     if (correct) {
       correctCount++;
     } else {
@@ -318,13 +410,19 @@ class ReviewStore extends ChangeNotifier {
     } finally {
       _busy = false;
     }
-    // Xato javob: so'z seans oxiriga yaqin yana chiqadi (jadvalga ta'sirsiz).
+    final ids = _queue.map((e) => e.wordId).toList();
     if (!correct && (_repeats[c.wordId] ?? 0) < _maxRepeats) {
+      // Xato javob: so'z seans oxiriga yaqin yana chiqadi (jadvalga ta'sirsiz).
       _repeats[c.wordId] = (_repeats[c.wordId] ?? 0) + 1;
-      final repeat = _makeCard(c.wordId, practice: true, mode: c.mode);
-      final pos = reinsertIndex(_queue.map((e) => e.wordId).toList(), _index + 1, c.wordId, gap: 3);
-      if (pos >= 0) _queue.insert(pos, repeat);
+      final pos = reinsertIndex(ids, _index + 1, c.wordId, gap: 3);
+      if (pos >= 0) _queue.insert(pos, _makeCard(c.wordId, practice: true, mode: c.mode));
+    } else if (correct && wasNew && !c.practice && _learningShown.add(c.wordId)) {
+      // Yangi so'z: o'sha seansda bir oz keyinroq yana bir marta (o'rganish qadami).
+      final pos = reinsertIndex(ids, _index + 1, c.wordId, gap: learningGap);
+      if (pos >= 0) _queue.insert(pos, _makeCard(c.wordId, practice: true, mode: ReviewMode.recognize));
     }
+    final w = app.word(c.wordId);
+    suggestMnemonic = !correct && w != null && w.wrongCount >= 3 && !w.hasMnemonic;
     _undo = _Snapshot(snapshotIndex, snapshotQueue, snapCorrect, snapWrong, snapRepeats, receipt);
     _undoUntil = DateTime.now().add(undoWindow);
     _undoTimer?.cancel();
@@ -347,10 +445,13 @@ class ReviewStore extends ChangeNotifier {
 
   void _advance() {
     _index++;
+    if (finished && kind == SessionKind.recap) app.markRecapDone();
     phase = CardPhase.question;
     check = null;
+    recall = null;
     chosen = null;
     lastCorrect = null;
+    suggestMnemonic = false;
     notifyListeners();
   }
 
@@ -367,8 +468,11 @@ class ReviewStore extends ChangeNotifier {
     wrongCount = u.wrong;
     phase = CardPhase.question;
     check = null;
+    recall = null;
     chosen = null;
     lastCorrect = null;
+    suggestMnemonic = false;
+    _learningShown.remove(u.receipt.previous.id);
     _repeats
       ..clear()
       ..addAll(u.repeats);

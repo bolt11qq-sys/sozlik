@@ -10,6 +10,7 @@ class AppSettings {
     this.modeProduce = true,
     this.modeSynonym = true,
     this.modeAudio = true,
+    this.modeCloze = true,
     this.reminderOn = true,
     this.reminderTime = '20:00',
     this.dayStartHour = 4,
@@ -25,6 +26,7 @@ class AppSettings {
   final bool modeProduce;
   final bool modeSynonym;
   final bool modeAudio;
+  final bool modeCloze;
   final bool reminderOn;
 
   /// `HH:MM`.
@@ -44,6 +46,7 @@ class AppSettings {
     if (modeProduce) ReviewMode.produce,
     if (modeSynonym) ReviewMode.synonym,
     if (modeAudio) ReviewMode.audio,
+    if (modeCloze) ReviewMode.cloze,
   };
 
   bool isEnabled(ReviewMode m) => enabledModes.contains(m);
@@ -58,6 +61,7 @@ class AppSettings {
     bool? modeProduce,
     bool? modeSynonym,
     bool? modeAudio,
+    bool? modeCloze,
     bool? reminderOn,
     String? reminderTime,
     int? dayStartHour,
@@ -73,6 +77,7 @@ class AppSettings {
     modeProduce: modeProduce ?? this.modeProduce,
     modeSynonym: modeSynonym ?? this.modeSynonym,
     modeAudio: modeAudio ?? this.modeAudio,
+    modeCloze: modeCloze ?? this.modeCloze,
     reminderOn: reminderOn ?? this.reminderOn,
     reminderTime: reminderTime ?? this.reminderTime,
     dayStartHour: dayStartHour ?? this.dayStartHour,
@@ -87,6 +92,7 @@ class AppSettings {
     ReviewMode.produce => copyWith(modeProduce: on),
     ReviewMode.synonym => copyWith(modeSynonym: on),
     ReviewMode.audio => copyWith(modeAudio: on),
+    ReviewMode.cloze => copyWith(modeCloze: on),
   };
 
   Map<String, Object?> toMap() => {
@@ -97,6 +103,7 @@ class AppSettings {
     'modeProduce': modeProduce ? 1 : 0,
     'modeSynonym': modeSynonym ? 1 : 0,
     'modeAudio': modeAudio ? 1 : 0,
+    'modeCloze': modeCloze ? 1 : 0,
     'reminderOn': reminderOn ? 1 : 0,
     'reminderTime': reminderTime,
     'dayStartHour': dayStartHour,
@@ -113,6 +120,7 @@ class AppSettings {
     modeProduce: (m['modeProduce'] as int?) != 0,
     modeSynonym: (m['modeSynonym'] as int?) != 0,
     modeAudio: (m['modeAudio'] as int?) != 0,
+    modeCloze: (m['modeCloze'] as int?) != 0,
     reminderOn: (m['reminderOn'] as int?) != 0,
     reminderTime: (m['reminderTime'] as String?) ?? '20:00',
     dayStartHour: (m['dayStartHour'] as int?) ?? 4,

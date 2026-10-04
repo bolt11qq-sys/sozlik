@@ -25,6 +25,12 @@ void main() {
       expect(p.fresh[5].example, 'This is example number 5 with word5.');
     });
 
+    test("Bir nechta misol '|' bilan ajratiladi", () {
+      final p = parseImport('scarce :: kam :: rare :: Water is scarce. | Jobs are scarce here.', {});
+      expect(p.fresh.single.example, 'Water is scarce.');
+      expect(p.fresh.single.moreExamples, ['Jobs are scarce here.']);
+    });
+
     test('Oxirgi ikki maydon ixtiyoriy', () {
       final p = parseImport('abundant :: mo\'l-ko\'l\nscarce :: kam :: rare', {});
       expect(p.fresh.length, 2);

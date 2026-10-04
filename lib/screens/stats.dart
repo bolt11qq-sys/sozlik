@@ -284,6 +284,8 @@ class _StatsScreenState extends State<StatsScreen> {
         "Yozib javob berishda natija eng past (${worst.$2}%). Har kuni bir nechta so'z uchun o'zingiz gap yozib ko'ring.",
       ReviewMode.synonym =>
         "Sinonimlarda natija eng past (${worst.$2}%). So'z kartochkalariga sinonimlarni misol bilan qo'shing.",
+      ReviewMode.cloze =>
+        "Gapni to'ldirishda natija eng past (${worst.$2}%). So'zlarga turli shakldagi misol gaplar qo'shing.",
       ReviewMode.recognize =>
         "Tanish rejimida natija ${worst.$2}%. Kunlik yangi so'zlar sonini kamaytirish foydali bo'lishi mumkin.",
     };

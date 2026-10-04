@@ -21,6 +21,7 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.produce,
     required this.synonym,
     required this.audio,
+    required this.cloze,
     required this.dashed,
     required this.isDark,
   });
@@ -42,6 +43,7 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color produce;
   final Color synonym;
   final Color audio;
+  final Color cloze;
 
   final Color dashed;
   final bool isDark;
@@ -62,6 +64,7 @@ class AppColors extends ThemeExtension<AppColors> {
     produce: Color(0xFFB4512C),
     synonym: Color(0xFF5B4A9E),
     audio: Color(0xFF5B4A9E),
+    cloze: Color(0xFF1F6F8B),
     dashed: Color(0xFFBFC7C1),
     isDark: false,
   );
@@ -82,6 +85,7 @@ class AppColors extends ThemeExtension<AppColors> {
     produce: Color(0xFF6FA8F5),
     synonym: Color(0xFFC98AE8),
     audio: Color(0xFFE8AC5C),
+    cloze: Color(0xFF5FB4D1),
     dashed: Color(0xFF3A434C),
     isDark: true,
   );
@@ -115,6 +119,7 @@ class AppColors extends ThemeExtension<AppColors> {
       produce: l(produce, other.produce),
       synonym: l(synonym, other.synonym),
       audio: l(audio, other.audio),
+      cloze: l(cloze, other.cloze),
       dashed: l(dashed, other.dashed),
       isDark: t < 0.5 ? isDark : other.isDark,
     );

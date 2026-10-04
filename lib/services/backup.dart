@@ -45,6 +45,8 @@ const Map<String, Map<String, String>> _schema = {
     'exampleUz': 'str?',
     'pos': 'str?',
     'audio': 'str?',
+    'extraExamples': 'str?',
+    'mnemonic': 'str?',
     'tags': 'str',
     'stage': 'int',
     'intervalDays': 'int',
@@ -79,6 +81,7 @@ const Map<String, Map<String, String>> _schema = {
     'modeProduce': 'int',
     'modeSynonym': 'int',
     'modeAudio': 'int',
+    'modeCloze': 'int',
     'reminderOn': 'int',
     'reminderTime': 'str',
     'dayStartHour': 'int',
@@ -92,8 +95,17 @@ const Map<String, Map<String, String>> _schema = {
 /// Ixtiyoriy ustunlar uchun standart qiymatlar (eski nusxalar bilan moslik).
 const Map<String, Map<String, Object?>> _defaults = {
   'review_logs': {'practice': 0, 'answerText': null},
-  'words': {'synonyms': null, 'example': null, 'exampleUz': null, 'pos': null, 'audio': null, 'lastSeen': null},
-  'settings': {'reminderOn': 1, 'lastBackupAt': null, 'examName': 'Multilevel', 'examDate': null},
+  'words': {
+    'synonyms': null,
+    'example': null,
+    'exampleUz': null,
+    'pos': null,
+    'audio': null,
+    'extraExamples': null,
+    'mnemonic': null,
+    'lastSeen': null,
+  },
+  'settings': {'modeCloze': 1, 'reminderOn': 1, 'lastBackupAt': null, 'examName': 'Multilevel', 'examDate': null},
 };
 
 class BackupCodec {
@@ -203,7 +215,7 @@ class BackupCodec {
         throw BackupFormatException("Teglar noto'g'ri: $en");
       }
     }
-    const modes = {'recognize', 'produce', 'synonym', 'audio'};
+    const modes = {'recognize', 'produce', 'synonym', 'audio', 'cloze'};
     for (final l in t['review_logs']!) {
       if (!ids.contains(l['wordId'])) throw const BackupFormatException("Tarixda mavjud bo'lmagan so'z bor.");
       if (!modes.contains(l['mode'])) throw const BackupFormatException("Tarixda noma'lum rejim bor.");

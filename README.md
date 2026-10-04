@@ -25,6 +25,13 @@ internet ruxsati yo'q, akkaunt va bulut yo'q. Texnik topshiriq: [SOZLIK-TZ.md](S
 
 **3-bosqich**: teg bo'yicha alohida seans, Anki uchun eksport, bosh ekran vidjeti.
 
+**1.3 — esdan chiqmaslik uchun**:
+- Sinonimlar: 2–3-bosqichda tanlash, 4+ da yordamsiz yozib eslash (yarmidan ko'pi kerak; eslangan/unutilganlar ko'rsatiladi).
+- Yangi so'z o'sha seansda ~6 kartochkadan keyin yana chiqadi; 18:00 dan keyin "Kechki takrorlash".
+- Bir so'zga 5 tagacha misol gap — har takrorlashda boshqasi (importda `misol1 | misol2`).
+- Yangi rejim "Gap to'ldirish": gapdagi bo'sh joyga so'zni kerakli shaklda yozish.
+- O'z eslatmangiz (mnemonika): xatodan keyin ko'rinadi; 3 marta unutilgan so'zga taklif qilinadi.
+
 **1.2**: tez seans (10 ta), maqsad imtihoni sanasi va prognoz, faollik xaritasi (15 hafta), so'zlarni ko'plab tanlab teg/arxiv/qiyin/o'chirish, CSV eksport (qayta import qilinadi), kunlik avto-zaxira (ilova ichida, 7 kun), telefon TTS sozlamasini ochish.
 
 ## Tuzilish

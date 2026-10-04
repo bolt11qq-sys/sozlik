@@ -287,7 +287,7 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     AppLogo(size: 16, color: c.accent),
                     const SizedBox(width: 6),
-                    Text("So'zlik 1.2 · to'liq oflayn, internet ishlatilmaydi", style: T.text(11, color: c.sec)),
+                    Text("So'zlik 1.3 · to'liq oflayn, internet ishlatilmaydi", style: T.text(11, color: c.sec)),
                   ],
                 ),
               ],

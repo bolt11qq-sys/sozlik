@@ -32,6 +32,13 @@ class _WordEditScreenState extends State<WordEditScreen> {
   late final _exUz = TextEditingController(text: widget.word?.exampleUz ?? '');
   late String? _pos = widget.word?.pos;
   late List<String> _tags = List.of(widget.word?.tags ?? const []);
+  late final _mnemonic = TextEditingController(text: widget.word?.mnemonic ?? '');
+
+  /// Qo'shimcha misollar: (inglizcha, tarjima).
+  late final List<(TextEditingController, TextEditingController)> _extras = [
+    for (final e in widget.word?.extraExamples ?? const <Example>[])
+      (TextEditingController(text: e.en), TextEditingController(text: e.uz ?? '')),
+  ];
   final _enFocus = FocusNode();
   int _added = 0;
   bool _saving = false;
@@ -46,6 +53,11 @@ class _WordEditScreenState extends State<WordEditScreen> {
 
   @override
   void dispose() {
+    for (final (a, b) in _extras) {
+      a.dispose();
+      b.dispose();
+    }
+    _mnemonic.dispose();
     for (final c in [_en, _uz, _syn, _ex, _exUz]) {
       c.dispose();
     }
@@ -75,6 +87,12 @@ class _WordEditScreenState extends State<WordEditScreen> {
       pos: _pos,
       clearPos: _pos == null,
       tags: _tags,
+      extraExamples: [
+        for (final (a, b) in _extras)
+          if (a.text.trim().isNotEmpty) Example(a.text.trim(), b.text.trim().isEmpty ? null : b.text.trim()),
+      ],
+      mnemonic: _mnemonic.text.trim().isEmpty ? null : _mnemonic.text.trim(),
+      clearMnemonic: _mnemonic.text.trim().isEmpty,
     );
   }
 
@@ -122,9 +140,14 @@ class _WordEditScreenState extends State<WordEditScreen> {
     setState(() {
       _added++;
       _showErrors = false;
-      for (final c in [_en, _uz, _syn, _ex, _exUz]) {
+      for (final c in [_en, _uz, _syn, _ex, _exUz, _mnemonic]) {
         c.clear();
       }
+      for (final (a, b) in _extras) {
+        a.dispose();
+        b.dispose();
+      }
+      _extras.clear();
       _pos = null;
       _newAudio = null;
       _newAudioName = null;
@@ -332,6 +355,56 @@ class _WordEditScreenState extends State<WordEditScreen> {
                         'Misol tarjimasi (ixtiyoriy)',
                         child: _Field(controller: _exUz, hint: "Ta'lim 16 yoshgacha majburiy.", lines: 2),
                       ),
+                      for (var i = 0; i < _extras.length; i++)
+                        _Labeled(
+                          'Qo\'shimcha misol ${i + 2}',
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              _Field(controller: _extras[i].$1, hint: 'Boshqa vaziyatdagi gap…', lines: 2, latin: true),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _Field(controller: _extras[i].$2, hint: 'tarjimasi (ixtiyoriy)'),
+                                  ),
+                                  IconButton(
+                                    tooltip: "Misolni o'chirish",
+                                    onPressed: () => setState(() {
+                                      final (a, b) = _extras.removeAt(i);
+                                      a.dispose();
+                                      b.dispose();
+                                    }),
+                                    icon: AppIcon(AppIcons.trash, size: 18, color: c.red),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (_extras.length < 4)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Pressable(
+                            onTap: () =>
+                                setState(() => _extras.add((TextEditingController(), TextEditingController()))),
+                            radius: 14,
+                            border: Border.all(color: c.dashed),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            child: Row(
+                              children: [
+                                AppIcon(AppIcons.plus, size: 18, color: c.accent),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    "Yana misol qo'shish — har takrorlashda boshqasi chiqadi",
+                                    style: T.text(13, color: c.sec),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       _Labeled(
                         "So'z turkumi",
                         child: Wrap(
@@ -368,6 +441,14 @@ class _WordEditScreenState extends State<WordEditScreen> {
                               child: Text('+ teg', style: T.text(13, color: c.sec)),
                             ),
                           ],
+                        ),
+                      ),
+                      _Labeled(
+                        "Eslatma (o'z bog'lanishingiz, ixtiyoriy)",
+                        child: _Field(
+                          controller: _mnemonic,
+                          hint: 'masalan: reluctant — "re-lak": lak surishni istamaydi',
+                          lines: 2,
                         ),
                       ),
                       _Labeled(
