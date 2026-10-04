@@ -78,9 +78,9 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   const _LearnCard(),
                 ],
+                if (app.recapWords.isNotEmpty) ...[const SizedBox(height: 16), const _RecapCard()],
                 const SizedBox(height: 16),
                 const _ModeChips(),
-                if (app.recapDue) ...[const SizedBox(height: 16), const _RecapCard()],
                 if (app.examDaysLeft != null) ...[const SizedBox(height: 16), const _ExamCard()],
                 const SizedBox(height: 16),
                 Row(
@@ -196,6 +196,8 @@ class _Hero extends StatelessWidget {
     final reviews = app.reviewIds.length;
     // Takrorlash qolmagan, faqat yangi so'zlar — karta o'rganishga chaqiradi.
     final learnOnly = !finished && reviews == 0;
+    // Reja bajarilgan, bugungi so'zlar hali takrorlanmagan — shuni taklif qilamiz.
+    final recap = finished && app.recapWords.isNotEmpty && !app.recapDoneToday;
     // Yorug' mavzuda — to'liq rangli karta (maket B), qorong'ida — to'q karta
     // va rangli tugma (maket D).
     final dark = c.isDark;
@@ -280,7 +282,9 @@ class _Hero extends StatelessWidget {
             haptic: true,
             color: dark ? c.accent : Colors.white,
             radius: 15,
-            onTap: finished
+            onTap: recap
+                ? () => push(context, const ReviewScreen(kind: SessionKind.recap))
+                : finished
                 ? (app.difficultCount > 0
                       ? () => push(context, const HardScreen())
                       : () => push(context, const WordEditScreen()))
@@ -293,7 +297,9 @@ class _Hero extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   AppIcon(
-                    finished
+                    recap
+                        ? AppIcons.brain
+                        : finished
                         ? (app.difficultCount > 0 ? AppIcons.warning : AppIcons.plus)
                         : learnOnly
                         ? AppIcons.book
@@ -304,7 +310,9 @@ class _Hero extends StatelessWidget {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    finished
+                    recap
+                        ? "Bugungi so'zlarni takrorlash"
+                        : finished
                         ? (app.difficultCount > 0 ? "Qiyin so'zlarni mashq qilish" : "Yangi so'z qo'shish")
                         : learnOnly
                         ? "O'rganishni boshlash"
@@ -421,27 +429,30 @@ class _RecapCard extends StatelessWidget {
     final app = context.app;
     final c = context.c;
     final n = app.recapWords.length;
+    final done = app.recapDoneToday;
+    final sub = done
+        ? "$n ta so'z · takrorlandi ✓ Yana mashq qilsangiz ham bo'ladi."
+        : app.recapDue
+        ? "$n ta so'z · ~${estimateMinutes(n)} daqiqa. Uxlashdan oldin ko'rilgan so'z yaxshiroq saqlanadi."
+        : "$n ta so'z · ~${estimateMinutes(n)} daqiqa. Istalgancha takrorlang — jadvalni buzmaydi.";
     return AppCard(
       radius: 16,
       onTap: () => push(context, const ReviewScreen(kind: SessionKind.recap)),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
         children: [
-          IconBox(AppIcons.moon, color: c.violet),
+          IconBox(app.recapDue ? AppIcons.moon : AppIcons.brain, color: c.violet),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Kechki takrorlash',
+                  app.recapDue ? 'Kechki takrorlash' : "Bugun o'rganilganlarni takrorlash",
                   style: T.text(14, w: FontWeight.w700, color: c.ink),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  "Bugungi $n ta yangi so'z · ~${estimateMinutes(n)} daqiqa. Uxlashdan oldin ko'rilgan so'z yaxshiroq saqlanadi.",
-                  style: T.text(12, color: c.sec, height: 1.45),
-                ),
+                Text(sub, style: T.text(12, color: c.sec, height: 1.45)),
               ],
             ),
           ),
@@ -575,10 +586,7 @@ class _LearnCard extends StatelessWidget {
                   style: T.text(15, w: FontWeight.w700, color: c.ink),
                 ),
                 const SizedBox(height: 3),
-                Text(
-                  "$n ta · avval yodlash, keyin test",
-                  style: T.text(12.5, color: c.sec),
-                ),
+                Text("$n ta · avval yodlash, keyin test", style: T.text(12.5, color: c.sec)),
               ],
             ),
           ),

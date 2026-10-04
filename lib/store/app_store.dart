@@ -493,8 +493,11 @@ class AppStore extends ChangeNotifier {
       if (_words[id] != null && !_words[id]!.isArchived) _words[id]!,
   ];
 
-  /// Kechki takrorlashni taklif qilish vaqti: 18:00 dan keyin, bugun hali qilinmagan.
-  bool get recapDue => recapWords.length >= 3 && DateTime.now().hour >= 18 && settings.recapDay != today;
+  /// Kechki takrorlashni eslatish vaqti: 18:00 dan keyin, bugun hali qilinmagan.
+  /// (Bugungi so'zlarni takrorlash esa istalgan vaqtda mavjud.)
+  bool get recapDue => recapWords.isNotEmpty && DateTime.now().hour >= 18 && !recapDoneToday;
+
+  bool get recapDoneToday => settings.recapDay == today;
 
   void markRecapDone() {
     settings.recapDay = today;

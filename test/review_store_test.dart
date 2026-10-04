@@ -93,6 +93,17 @@ void main() {
     expect(again.where((x) => x.choice && x.practice), hasLength(1));
   });
 
+  test("Bitta so'z o'rganilsa ham, bugungi so'zlarni darhol takrorlash mumkin", () async {
+    final app = await makeApp();
+    final s = ReviewStore(app, kind: SessionKind.learn, random: Random(9))..start();
+    _skipIntros(s);
+    await s.choose(app.word(s.card!.wordId)!.uz);
+    expect(app.recapWords, hasLength(1));
+    expect(app.recapDoneToday, isFalse);
+    final r = ReviewStore(app, kind: SessionKind.recap, random: Random(9))..start();
+    expect(r.total, 1);
+  });
+
   test("Ortga qaytarish o'rganishdagi javobni bekor qiladi", () async {
     final app = await makeApp();
     final s = ReviewStore(app, kind: SessionKind.learn, random: Random(2))..start();

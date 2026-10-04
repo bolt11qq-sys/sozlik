@@ -156,7 +156,7 @@ class ReviewStore extends ChangeNotifier {
   String get title => switch (kind) {
     SessionKind.hard => "Qiyin so'zlar",
     SessionKind.tag => tag ?? 'Teg',
-    SessionKind.recap => 'Kechki takrorlash',
+    SessionKind.recap => "Bugungi so'zlar",
     SessionKind.learn => "Yangi so'zlar",
     SessionKind.daily => card?.intro == true ? "Yangi so'z" : card?.mode.label ?? 'Takrorlash',
   };

@@ -280,6 +280,18 @@ void main() {
       '14_write_dark',
       dark: true,
     );
+    await tester.runAsync(() async {
+      final rs = ReviewStore(app, kind: SessionKind.learn)..start();
+      while (rs.card?.intro ?? false) {
+        rs.learned();
+      }
+      for (var i = 0; i < 3; i++) {
+        await rs.choose(app.word(rs.card!.wordId)!.uz);
+        rs.next();
+      }
+      rs.dispose();
+    });
+    await shot(tester, app, const Shell(), '21_home_recap');
   });
 }
 

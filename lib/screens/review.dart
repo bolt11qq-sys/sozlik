@@ -1342,6 +1342,7 @@ class _Summary extends StatelessWidget {
     final pct = total == 0 ? 0 : (store.correctCount * 100 / total).round();
     final left = app.reviewIds.length;
     final fresh = app.freshIds.length;
+    final recap = app.recapWords.length;
     final tomorrow = app.forecast(2).last;
     final daily = store.kind == SessionKind.daily;
     final learn = store.kind == SessionKind.learn;
@@ -1372,8 +1373,8 @@ class _Summary extends StatelessWidget {
                       ),
                     Text(
                       learn
-                          ? "Bu so'zlar ertaga birinchi marta takrorlanadi — keyin 3, 7, 14 kundan so'ng. "
-                                "Unutmaslik uchun kechqurun «Kechki takrorlash»ni ham qiling."
+                          ? "Hoziroq «Takrorlash» bilan mustahkamlang. Keyin bu so'zlar o'zi qaytadi: "
+                                "ertaga, so'ng 3, 7, 14 kundan keyin — kunlik takrorlashda."
                           : daily
                           ? (left == 0
                                     ? "Bugungi reja to'liq bajarildi. Ertaga $tomorrow ta so'z kutadi."
@@ -1415,19 +1416,45 @@ class _Summary extends StatelessWidget {
           ),
         ),
         BottomBar(
-          children: [
-            BigButton(label: 'Bosh sahifa', kind: ButtonKind.secondary, onTap: () => Navigator.of(context).pop()),
-            if (daily && left > 0)
-              BigButton(label: 'Davom etish', icon: AppIcons.play, onTap: () => open(const ReviewScreen()))
-            else if ((daily || learn) && fresh > 0)
-              BigButton(
-                label: learn ? 'Yana ${min(fresh, ReviewStore.learnSession)} ta' : "Yangi so'zlar",
-                icon: AppIcons.play,
-                onTap: () => open(const ReviewScreen(kind: SessionKind.learn)),
-              )
-            else if (learn && left > 0)
-              BigButton(label: 'Takrorlash', icon: AppIcons.play, onTap: () => open(const ReviewScreen())),
-          ],
+          children: learn
+              ? [
+                  // O'rganishdan keyin: bugungi so'zlarni darhol takrorlash yoki keyingi guruh.
+                  if (fresh > 0)
+                    BigButton(
+                      label: 'Yana ${min(fresh, ReviewStore.learnSession)} ta',
+                      kind: ButtonKind.secondary,
+                      onTap: () => open(const ReviewScreen(kind: SessionKind.learn)),
+                    )
+                  else
+                    BigButton(
+                      label: 'Bosh sahifa',
+                      kind: ButtonKind.secondary,
+                      onTap: () => Navigator.of(context).pop(),
+                    ),
+                  if (recap > 0)
+                    BigButton(
+                      label: 'Takrorlash',
+                      icon: AppIcons.play,
+                      onTap: () => open(const ReviewScreen(kind: SessionKind.recap)),
+                    ),
+                ]
+              : [
+                  BigButton(label: 'Bosh sahifa', kind: ButtonKind.secondary, onTap: () => Navigator.of(context).pop()),
+                  if (daily && left > 0)
+                    BigButton(label: 'Davom etish', icon: AppIcons.play, onTap: () => open(const ReviewScreen()))
+                  else if ((daily || learn) && fresh > 0)
+                    BigButton(
+                      label: learn ? 'Yana ${min(fresh, ReviewStore.learnSession)} ta' : "Yangi so'zlar",
+                      icon: AppIcons.play,
+                      onTap: () => open(const ReviewScreen(kind: SessionKind.learn)),
+                    )
+                  else if (daily && recap > 0 && !app.recapDoneToday)
+                    BigButton(
+                      label: "Bugungi so'zlar",
+                      icon: AppIcons.play,
+                      onTap: () => open(const ReviewScreen(kind: SessionKind.recap)),
+                    ),
+                ],
         ),
       ],
     );
