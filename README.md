@@ -19,6 +19,8 @@ internet ruxsati yo'q, akkaunt va bulut yo'q. Texnik topshiriq: [SOZLIK-TZ.md](S
 - Kunlik eslatma: kuniga bitta, maqsad bajarilgan kuni yuborilmaydi.
 - Zaxira nusxa (JSON): birlashtirish yoki ikki bosqichli tasdiq bilan to'liq almashtirish; buzuq fayl rad etiladi.
 
+- **O'z talaffuz fayllaringiz**: so'zni tahrirlashda mp3/m4a/wav yuklanadi yoki Sozlamalar → "Talaffuz fayllarini yuklash" orqali ko'p fayl bir yo'la (fayl nomi = so'z: `compulsory.mp3`, `carry_out.m4a`). Fayl bo'lmasa — telefon ovozi (TTS). Audio fayllar JSON zaxira nusxaga kirmaydi.
+
 **2-bosqich**: qiyin so'zlar mashqi, gap yozish mashqi, so'z tafsiloti (tarix), qorong'i mavzu.
 
 **3-bosqich**: teg bo'yicha alohida seans, Anki uchun eksport. *(Bosh ekran vidjeti hali yo'q.)*

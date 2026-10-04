@@ -110,7 +110,7 @@ class _SentenceScreenState extends State<SentenceScreen> {
                           Row(
                             children: [
                               Expanded(child: Text(w.en, style: T.text(28, w: FontWeight.w700, color: c.ink))),
-                              SpeakButton(w.en, size: 20),
+                              SpeakButton.word(w, size: 20),
                             ],
                           ),
                           Text(w.uz, style: T.text(15, w: FontWeight.w600, color: c.accent)),

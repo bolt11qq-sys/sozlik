@@ -1,7 +1,7 @@
 name: sozlik
 description: "So'zlik — ingliz tili so'zlarini takrorlash jadvali bo'yicha yodlash ilovasi. Oflayn."
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.13.4
@@ -20,6 +20,8 @@ dependencies:
   flutter_svg: ^2.3.0
   timezone: ^0.11.1
   flutter_timezone: ^5.1.1
+  audioplayers: ^6.8.1
+  path_provider: ^2.1.6
 
 dev_dependencies:
   flutter_test:

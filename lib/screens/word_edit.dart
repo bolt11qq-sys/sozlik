@@ -1,9 +1,11 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../main.dart';
 import '../models/word.dart';
 import '../services/tts.dart';
+import '../services/word_audio.dart';
 import '../srs/scheduler.dart';
 import '../store/app_store.dart';
 import '../theme.dart';
@@ -34,6 +36,11 @@ class _WordEditScreenState extends State<WordEditScreen> {
   int _added = 0;
   bool _saving = false;
   bool _showErrors = false;
+
+  // Talaffuz fayli: saqlash bosilganda qo'llanadi.
+  Uint8List? _newAudio;
+  String? _newAudioName;
+  bool _removeAudio = false;
 
   bool get _editing => widget.word != null;
 
@@ -81,10 +88,17 @@ class _WordEditScreenState extends State<WordEditScreen> {
     setState(() => _saving = true);
     try {
       final w = _build(app);
+      final int id;
       if (_editing) {
         await app.updateWord(w);
+        id = w.id!;
       } else {
-        await app.addWord(w);
+        id = await app.addWord(w);
+      }
+      if (_newAudio != null) {
+        await app.setAudio(id, _newAudio!, _newAudioName!.split('.').last);
+      } else if (_removeAudio) {
+        await app.removeAudio(id);
       }
       return true;
     } on DuplicateWordException catch (e) {
@@ -112,6 +126,9 @@ class _WordEditScreenState extends State<WordEditScreen> {
         c.clear();
       }
       _pos = null;
+      _newAudio = null;
+      _newAudioName = null;
+      _removeAudio = false;
       // Teglar ataylab saqlanadi — bir mavzudagi so'zlarni ketma-ket kiritish uchun.
     });
     _enFocus.requestFocus();
@@ -139,6 +156,40 @@ class _WordEditScreenState extends State<WordEditScreen> {
     // Tafsilot ekrani va takrorlash seansi o'chirilgan so'zni o'zi chetlab o'tadi.
     Navigator.of(context).pop();
     showToast(context, "So'z o'chirildi");
+  }
+
+  bool get _hasAudio => _newAudio != null || (!_removeAudio && (widget.word?.hasAudio ?? false));
+
+  Future<void> _pickAudio() async {
+    try {
+      final f = await FilePicker.pickFile(dialogTitle: 'Talaffuz faylini tanlang', type: FileType.audio);
+      if (f == null) return;
+      final ext = (f.extension ?? '').toLowerCase();
+      if (!kAudioExtensions.contains(ext)) {
+        if (mounted) showToast(context, "Bu format qo'llanmaydi. mp3, m4a, wav, ogg tanlang");
+        return;
+      }
+      final bytes = await f.xFile.readAsBytes();
+      if (bytes.length > 10 * 1024 * 1024) {
+        if (mounted) showToast(context, 'Fayl juda katta (10 MB dan oshmasin)');
+        return;
+      }
+      setState(() {
+        _newAudio = bytes;
+        _newAudioName = f.name;
+        _removeAudio = false;
+      });
+    } on PlatformException catch (e) {
+      if (mounted) showToast(context, 'Fayl ochilmadi: ${e.message ?? e.code}');
+    }
+  }
+
+  void _playAudio() {
+    if (_newAudio != null) {
+      WordAudio.instance.playBytes(_newAudio!);
+    } else if (widget.word != null) {
+      WordAudio.instance.playWord(widget.word!);
+    }
   }
 
   Future<void> _addTag() async {
@@ -287,26 +338,75 @@ class _WordEditScreenState extends State<WordEditScreen> {
                           ],
                         ),
                       ),
-                      AppCard(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                        onTap: _ex.text.trim().isEmpty ? null : () => Tts.instance.speak(_ex.text),
-                        child: Row(
-                          children: [
-                            IconBox(AppIcons.speaker, color: c.accent),
-                            const SizedBox(width: 11),
-                            Expanded(
-                              child: Text(
-                                Tts.instance.available
-                                    ? 'Audio avtomatik hosil qilinadi'
-                                    : "Telefonda inglizcha ovoz (TTS) o'rnatilmagan",
-                                style: T.text(13, color: c.sec),
+                      _Labeled(
+                        'Talaffuz (audio fayl)',
+                        child: AppCard(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          onTap: _hasAudio ? _playAudio : _pickAudio,
+                          child: Row(
+                            children: [
+                              IconBox(_hasAudio ? AppIcons.speaker : AppIcons.upload, color: c.accent),
+                              const SizedBox(width: 11),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _hasAudio ? 'Sizning talaffuzingiz' : 'Fayl yuklash',
+                                      style: T.text(14, w: FontWeight.w600, color: c.ink),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _newAudio != null
+                                          ? '$_newAudioName · tinglash uchun bosing'
+                                          : _hasAudio
+                                              ? 'Tinglash uchun bosing'
+                                              : (Tts.instance.available
+                                                  ? "mp3, m4a, wav… Yo'q bo'lsa, telefon ovozi o'qiydi"
+                                                  : "mp3, m4a, wav… Telefonda inglizcha ovoz (TTS) yo'q"),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: T.text(12, color: c.sec),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            ),
-                            AppIcon(Tts.instance.available ? AppIcons.check : AppIcons.info,
-                                size: 18, color: Tts.instance.available ? c.accent : c.amber),
-                          ],
+                              if (_hasAudio) ...[
+                                IconButton(
+                                  tooltip: 'Almashtirish',
+                                  onPressed: _pickAudio,
+                                  icon: AppIcon(AppIcons.upload, size: 18, color: c.sec),
+                                ),
+                                IconButton(
+                                  tooltip: "Faylni o'chirish",
+                                  onPressed: () => setState(() {
+                                    _newAudio = null;
+                                    _newAudioName = null;
+                                    _removeAudio = true;
+                                  }),
+                                  icon: AppIcon(AppIcons.trash, size: 18, color: c.red),
+                                ),
+                              ],
+                            ],
+                          ),
                         ),
                       ),
+                      if (_ex.text.trim().isNotEmpty)
+                        AppCard(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          onTap: () => Tts.instance.speak(_ex.text),
+                          child: Row(
+                            children: [
+                              IconBox(AppIcons.message, color: c.violet),
+                              const SizedBox(width: 11),
+                              Expanded(
+                                child: Text("Misol gap telefon ovozida o'qiladi — tinglash",
+                                    style: T.text(13, color: c.sec)),
+                              ),
+                              AppIcon(AppIcons.speaker, size: 18, color: c.violet),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),

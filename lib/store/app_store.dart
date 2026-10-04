@@ -12,6 +12,7 @@ import '../models/word.dart';
 import '../services/backup.dart';
 import '../services/importer.dart';
 import '../services/notifier.dart';
+import '../services/word_audio.dart';
 import '../srs/scheduler.dart';
 import 'settings_store.dart';
 
@@ -156,7 +157,9 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> deleteWord(int id) async {
+    final audio = _words[id]?.audio;
     await db.deleteWord(id);
+    await WordAudio.instance.delete(audio);
     _words.remove(id);
     _sentences.remove(id);
     _reviewedByDay = await db.reviewedByDay();
@@ -174,6 +177,46 @@ class AppStore extends ChangeNotifier {
     if (w == null) return;
     await updateWord(w.copyWith(status: v ? WordStatus.archived : WordStatus.active));
     _scheduleReminders();
+  }
+
+  // ───────────── talaffuz fayllari ─────────────
+
+  /// So'zga audio fayl biriktiradi (eskisi o'chiriladi).
+  Future<void> setAudio(int id, Uint8List bytes, String extension) async {
+    final w = _words[id];
+    if (w == null) return;
+    final name = await WordAudio.instance.save(bytes, extension, stem: w.en);
+    final old = w.audio;
+    await updateWord(w.copyWith(audio: name));
+    if (old != null && old != name) await WordAudio.instance.delete(old);
+  }
+
+  Future<void> removeAudio(int id) async {
+    final w = _words[id];
+    if (w == null || !w.hasAudio) return;
+    await updateWord(w.copyWith(clearAudio: true));
+    await WordAudio.instance.delete(w.audio);
+  }
+
+  int get audioCount => _words.values.where((w) => w.hasAudio).length;
+
+  /// Ko'p faylni bir yo'la biriktirish: fayl nomi so'zga moslanadi
+  /// (`compulsory.mp3` → "compulsory"). Natija: (biriktirilgan, mos kelmagan fayllar).
+  Future<(int, List<String>)> attachAudioFiles(List<(String, Uint8List)> files) async {
+    final byKey = {for (final w in _words.values) w.key: w};
+    var matched = 0;
+    final unmatched = <String>[];
+    for (final (name, bytes) in files) {
+      final w = byKey[audioKeyFromFileName(name)];
+      final ext = name.contains('.') ? name.split('.').last : 'mp3';
+      if (w == null || !kAudioExtensions.contains(ext.toLowerCase())) {
+        unmatched.add(name);
+        continue;
+      }
+      await setAudio(w.id!, bytes, ext);
+      matched++;
+    }
+    return (matched, unmatched);
   }
 
   /// Bosqichni boshidan boshlash (tarix saqlanadi).

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/review_log.dart';
 import '../models/word.dart';
 import '../services/tts.dart';
+import '../services/word_audio.dart';
 import '../srs/scheduler.dart';
 import '../theme.dart';
 import 'app_card.dart';
@@ -51,22 +52,30 @@ class StageBadge extends StatelessWidget {
 }
 
 class SpeakButton extends StatelessWidget {
-  const SpeakButton(this.text, {super.key, this.size = 17, this.slow = false});
+  const SpeakButton(this.text, {super.key, this.size = 17, this.slow = false, this.word});
+
+  /// So'zning o'zi uchun: yuklangan talaffuz fayli bo'lsa — u ijro etiladi.
+  const SpeakButton.word(Word this.word, {super.key, this.size = 17, this.slow = false}) : text = '';
 
   final String text;
   final double size;
   final bool slow;
+  final Word? word;
 
   @override
   Widget build(BuildContext context) {
     final c = context.c;
+    final key = word?.en ?? text;
+    final own = word?.hasAudio ?? false;
     return ValueListenableBuilder<String?>(
       valueListenable: Tts.instance.speaking,
       builder: (_, now, _) => IconButton(
-        tooltip: 'Tinglash',
+        tooltip: own ? 'Talaffuz (sizning faylingiz)' : 'Tinglash',
         visualDensity: VisualDensity.compact,
-        onPressed: () => Tts.instance.speak(text, slow: slow),
-        icon: AppIcon(AppIcons.speaker, size: size, color: now == text ? c.accent : c.sec),
+        onPressed: () => word != null
+            ? WordAudio.instance.playWord(word!, slow: slow)
+            : Tts.instance.speak(text, slow: slow),
+        icon: AppIcon(AppIcons.speaker, size: size, color: now == key ? c.accent : (own ? c.ink : c.sec)),
       ),
     );
   }
@@ -103,7 +112,7 @@ class WordRow extends StatelessWidget {
             ),
             const SizedBox(width: 10),
             StageBadge(word),
-            SpeakButton(word.en),
+            SpeakButton.word(word),
           ],
         ),
       ),

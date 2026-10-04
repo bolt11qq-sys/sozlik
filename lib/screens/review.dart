@@ -7,6 +7,7 @@ import '../main.dart';
 import '../models/review_log.dart';
 import '../models/word.dart';
 import '../services/tts.dart';
+import '../services/word_audio.dart';
 import '../srs/scheduler.dart';
 import '../store/review_store.dart';
 import '../theme.dart';
@@ -43,6 +44,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   void dispose() {
     _store?.dispose();
     unawaited(Tts.instance.stop());
+    unawaited(WordAudio.instance.stop());
     super.dispose();
   }
 
@@ -434,7 +436,7 @@ class _CardViewState extends State<_CardView> {
             Expanded(
               child: Text(w.en, style: T.text(32, w: FontWeight.w700, color: c.ink, spacing: -0.5, height: 1.15)),
             ),
-            SpeakButton(w.en, size: 20),
+            SpeakButton.word(w, size: 20),
           ],
         ),
         if (w.pos != null) Text(kPosLabels[w.pos] ?? w.pos!, style: T.text(13, color: c.sec)),
@@ -645,7 +647,7 @@ class _CardViewState extends State<_CardView> {
         Row(
           children: [
             Expanded(child: Text(w.en, style: T.text(30, w: FontWeight.w700, color: c.ink, spacing: -0.5))),
-            SpeakButton(w.en, size: 20),
+            SpeakButton.word(w, size: 20),
           ],
         ),
         Text('${w.en} = ?', style: T.text(13, color: c.sec)),

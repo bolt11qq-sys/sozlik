@@ -90,7 +90,7 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                             child: Text(w.en,
                                 style: T.text(30, w: FontWeight.w700, color: c.ink, spacing: -0.5, height: 1.15)),
                           ),
-                          SpeakButton(w.en, size: 20),
+                          SpeakButton.word(w, size: 20),
                         ],
                       ),
                       if (w.pos != null) ...[
@@ -132,7 +132,11 @@ class _WordDetailScreenState extends State<WordDetailScreen> {
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: [StageBadge(w), ...w.tags.map((t) => Pill(t, color: c.sec))],
+                        children: [
+                          StageBadge(w),
+                          if (w.hasAudio) Pill("o'z talaffuzi", color: c.violet),
+                          ...w.tags.map((t) => Pill(t, color: c.sec)),
+                        ],
                       ),
                     ],
                   ),

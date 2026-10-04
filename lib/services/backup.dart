@@ -40,6 +40,7 @@ const Map<String, Map<String, String>> _schema = {
     'example': 'str?',
     'exampleUz': 'str?',
     'pos': 'str?',
+    'audio': 'str?',
     'tags': 'str',
     'stage': 'int',
     'intervalDays': 'int',
@@ -96,7 +97,7 @@ const Map<String, Map<String, String>> _schema = {
 /// Ixtiyoriy ustunlar uchun standart qiymatlar (eski nusxalar bilan moslik).
 const Map<String, Map<String, Object?>> _defaults = {
   'review_logs': {'practice': 0, 'answerText': null},
-  'words': {'synonyms': null, 'example': null, 'exampleUz': null, 'pos': null, 'lastSeen': null},
+  'words': {'synonyms': null, 'example': null, 'exampleUz': null, 'pos': null, 'audio': null, 'lastSeen': null},
   'settings': {'reminderOn': 1, 'lastBackupAt': null},
 };
 

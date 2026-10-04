@@ -8,6 +8,7 @@ import '../services/importer.dart';
 import '../theme.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_icon.dart';
+import 'audio_bulk.dart';
 
 /// 5. Import — yopishtirish → tahlil → ko'rib chiqish → tasdiqlash.
 class ImportScreen extends StatefulWidget {
@@ -171,6 +172,30 @@ class _ImportScreenState extends State<ImportScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  AppCard(
+                    radius: 16,
+                    onTap: () => bulkAudioUpload(context),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(
+                      children: [
+                        IconBox(AppIcons.speaker, color: c.accent),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Talaffuz fayllarini yuklash', style: T.text(14, w: FontWeight.w600, color: c.ink)),
+                              const SizedBox(height: 2),
+                              Text("Fayl nomi = so'z: compulsory.mp3, carry_out.m4a",
+                                  style: T.text(12, color: c.sec)),
+                            ],
+                          ),
+                        ),
+                        AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                      ],
+                    ),
                   ),
                   if (p != null) ...[
                     const SizedBox(height: 16),

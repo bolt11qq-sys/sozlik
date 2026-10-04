@@ -17,11 +17,14 @@ class AppDatabase {
   final Database db;
 
   /// Joriy sxema versiyasi. Har yangi migratsiya [_migrations] ga qo'shiladi.
-  static const int schemaVersion = 1;
+  static const int schemaVersion = 2;
 
   /// `versiya → SQL buyruqlar`. Masalan:
   /// `2: ['ALTER TABLE words ADD COLUMN ipa TEXT']`.
-  static const Map<int, List<String>> _migrations = {};
+  static const Map<int, List<String>> _migrations = {
+    // v2: foydalanuvchi yuklagan talaffuz fayli.
+    2: ['ALTER TABLE words ADD COLUMN audio TEXT'],
+  };
 
   static const _tables = ['meta', 'settings', 'words', 'review_logs', 'day_stats', 'sentences'];
 
@@ -81,6 +84,7 @@ class AppDatabase {
         example TEXT,
         exampleUz TEXT,
         pos TEXT,
+        audio TEXT,
         tags TEXT NOT NULL DEFAULT '[]',
         stage INTEGER NOT NULL DEFAULT 0,
         intervalDays INTEGER NOT NULL DEFAULT 0,

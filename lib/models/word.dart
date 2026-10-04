@@ -19,6 +19,7 @@ class Word {
     this.example,
     this.exampleUz,
     this.pos,
+    this.audio,
     this.tags = const [],
     this.stage = 0,
     this.intervalDays = 0,
@@ -40,6 +41,9 @@ class Word {
   final String? example;
   final String? exampleUz;
   final String? pos;
+
+  /// Foydalanuvchi yuklagan talaffuz fayli nomi (ilova ichidagi `audio/` papkada).
+  final String? audio;
   final List<String> tags;
   final int stage;
   final int intervalDays;
@@ -62,6 +66,7 @@ class Word {
   bool get isNew => stage == 0 && lastSeen == null;
   bool get isArchived => status == WordStatus.archived;
   bool get hasExample => (example ?? '').trim().isNotEmpty;
+  bool get hasAudio => (audio ?? '').isNotEmpty;
 
   /// TZ 5.2: `streakCorrect >= 3` va `stage >= 5` — o'zlashtirilgan.
   bool get isMastered => stage >= 6 || (stage >= 5 && streakCorrect >= 3);
@@ -81,6 +86,8 @@ class Word {
     bool clearExampleUz = false,
     String? pos,
     bool clearPos = false,
+    String? audio,
+    bool clearAudio = false,
     List<String>? tags,
     int? stage,
     int? intervalDays,
@@ -103,6 +110,7 @@ class Word {
       example: clearExample ? null : (example ?? this.example),
       exampleUz: clearExampleUz ? null : (exampleUz ?? this.exampleUz),
       pos: clearPos ? null : (pos ?? this.pos),
+      audio: clearAudio ? null : (audio ?? this.audio),
       tags: tags ?? this.tags,
       stage: stage ?? this.stage,
       intervalDays: intervalDays ?? this.intervalDays,
@@ -126,6 +134,7 @@ class Word {
         'example': example,
         'exampleUz': exampleUz,
         'pos': pos,
+        'audio': audio,
         'tags': jsonEncode(tags),
         'stage': stage,
         'intervalDays': intervalDays,
@@ -149,6 +158,7 @@ class Word {
       example: _nullIfEmpty(m['example'] as String?),
       exampleUz: _nullIfEmpty(m['exampleUz'] as String?),
       pos: _nullIfEmpty(m['pos'] as String?),
+      audio: _nullIfEmpty(m['audio'] as String?),
       tags: decodeTags(m['tags']),
       stage: (m['stage'] as int?) ?? 0,
       intervalDays: (m['intervalDays'] as int?) ?? 0,

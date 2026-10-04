@@ -156,7 +156,7 @@ void main() {
     await shot(tester, app, const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.audio), '04_review_audio');
     await shot(tester, app, const ReviewScreen(kind: SessionKind.daily, mode: ReviewMode.synonym), '04b_review_synonym');
     await shot(tester, app, const Shell(), '05_words', act: (t) async => t.tap(find.text("So'zlar").last));
-    await shot(tester, app, WordEditScreen(word: words[13]), '06_word_edit');
+    await shot(tester, app, WordEditScreen(word: words[13]), '06_word_edit', height: 1150);
     await shot(tester, app, const ImportScreen(), '07_import', act: (t) async {
       await t.enterText(find.byType(TextField).first,
           'compulsory :: majburiy\nnovel :: roman :: book :: She wrote a novel.\nvivid :: yorqin\nbad line');

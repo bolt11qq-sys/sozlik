@@ -12,6 +12,7 @@ import '../theme.dart';
 import '../widgets/app_card.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/word_card.dart';
+import 'audio_bulk.dart';
 import 'import.dart';
 
 const kMonths = [
@@ -183,6 +184,13 @@ class SettingsScreen extends StatelessWidget {
                     onTap: () => push(context, const ImportScreen()),
                   ),
                   RowItem(
+                    leading: IconBox(AppIcons.speaker, color: c.accent),
+                    title: 'Talaffuz fayllarini yuklash',
+                    subtitle: "${app.audioCount} ta so'zda bor · fayl nomi = so'z (compulsory.mp3)",
+                    trailing: AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
+                    onTap: () => bulkAudioUpload(context),
+                  ),
+                  RowItem(
                     leading: IconBox(AppIcons.file, color: c.violet),
                     title: 'Anki uchun eksport',
                     subtitle: 'Tab bilan ajratilgan .txt',
@@ -205,7 +213,7 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     AppLogo(size: 16, color: c.accent),
                     const SizedBox(width: 6),
-                    Text("So'zlik 1.0 · to'liq oflayn, internet ishlatilmaydi", style: T.text(11, color: c.sec)),
+                    Text("So'zlik 1.1 · to'liq oflayn, internet ishlatilmaydi", style: T.text(11, color: c.sec)),
                   ],
                 ),
               ],
