@@ -29,45 +29,90 @@ Future<AppStore> makeApp() async {
   return app;
 }
 
+/// Tanishish kartochkalarini o'tkazib, birinchi test kartochkasiga keladi.
+void _skipIntros(ReviewStore s) {
+  while (s.card?.intro ?? false) {
+    s.learned();
+  }
+}
+
 void main() {
   setUpAll(sqfliteFfiInit);
 
-  test("Yangi so'z to'g'ri topilsa, o'sha seansda yana bir marta chiqadi (jadvalga ta'sirsiz)", () async {
+  test("Kunlik takrorlashda yangi so'z yo'q — ular O'rganish bo'limida", () async {
     final app = await makeApp();
-    final s = ReviewStore(app, random: Random(1))..start();
-    final total = s.total;
-    final first = s.card!.wordId;
-    s.reveal();
-    await s.answerRecognize(true);
-    expect(s.total, total + 1);
-    final again = [for (var i = 1; i < s.total; i++) i].where((i) => _cardAt(s, i)?.wordId == first).toList();
-    expect(again, hasLength(1));
-    expect(again.single, greaterThanOrEqualTo(ReviewStore.learningGap));
-    // Bosqich 1 ga o'tdi; kechki takrorlash ro'yxatida bor.
-    expect(app.word(first)!.stage, 1);
-    expect(app.recapWords.map((w) => w.id), contains(first));
+    final daily = ReviewStore(app, random: Random(1))..start();
+    expect(daily.started, isFalse);
+    final learn = ReviewStore(app, kind: SessionKind.learn, random: Random(1))..start();
+    expect(learn.started, isTrue);
   });
 
-  test("Ortga qaytarish o'rganish qadamini ham bekor qiladi", () async {
+  test("O'rganish: 5 tadan guruh — yodlash, tarjimani tanlash, yozish", () async {
     final app = await makeApp();
-    final s = ReviewStore(app, random: Random(2))..start();
-    final total = s.total;
+    final s = ReviewStore(app, kind: SessionKind.learn, random: Random(7))..start();
+    // 12 ta yangi so'zdan seansga 10 tasi (ikki guruh), har biriga 3 kartochka.
+    expect(s.total, 30);
+    for (var g = 0; g < 2; g++) {
+      final cards = [for (var i = g * 15; i < g * 15 + 15; i++) s.cardAt(i)!];
+      final ids = cards.take(5).map((c) => c.wordId).toSet();
+      expect(cards.take(5).every((c) => c.intro), isTrue);
+      expect(cards.skip(5).take(5).every((c) => c.choice && !c.practice), isTrue);
+      expect(cards.skip(10).every((c) => c.mode == ReviewMode.produce && c.practice), isTrue);
+      expect(cards.skip(5).take(5).map((c) => c.wordId).toSet(), ids);
+      expect(cards.skip(10).map((c) => c.wordId).toSet(), ids);
+    }
+    // Yodlash hech narsa yozmaydi.
     final first = s.card!.wordId;
-    s.reveal();
-    await s.answerRecognize(true);
-    await s.undo();
-    expect(s.total, total);
-    expect(s.index, 0);
+    _skipIntros(s);
     expect(app.word(first)!.isNew, isTrue);
+    expect(s.introducedCount, 5);
+    // Tanlov: variantlar 4 ta, to'g'risi — tarjima; javob jadvalga yoziladi.
+    final c = s.card!;
+    final w = app.word(c.wordId)!;
+    final options = c.options(s.correctOption(w, c));
+    expect(options, hasLength(4));
+    expect(options, contains(w.uz));
+    await s.choose(w.uz);
+    expect(s.lastCorrect, isTrue);
+    expect(app.word(w.id!)!.stage, 1);
+    expect(app.recapWords.map((x) => x.id), contains(w.id));
+  });
+
+  test("O'rganishda xato tanlov — so'z guruh ichida yana chiqadi", () async {
+    final app = await makeApp();
+    final s = ReviewStore(app, kind: SessionKind.learn, random: Random(3))..start();
+    _skipIntros(s);
+    final total = s.total;
+    final c = s.card!;
+    final w = app.word(c.wordId)!;
+    final wrong = c.options(w.uz).firstWhere((o) => o != w.uz);
+    await s.choose(wrong);
+    expect(s.lastCorrect, isFalse);
+    expect(s.total, total + 1);
+    final again = [for (var i = s.index + 1; i < s.total; i++) s.cardAt(i)!].where((x) => x.wordId == w.id).toList();
+    expect(again.where((x) => x.choice && x.practice), hasLength(1));
+  });
+
+  test("Ortga qaytarish o'rganishdagi javobni bekor qiladi", () async {
+    final app = await makeApp();
+    final s = ReviewStore(app, kind: SessionKind.learn, random: Random(2))..start();
+    _skipIntros(s);
+    final start = s.index;
+    final c = s.card!;
+    await s.choose(app.word(c.wordId)!.uz);
+    await s.undo();
+    expect(s.index, start);
+    expect(app.word(c.wordId)!.isNew, isTrue);
     expect(app.recapWords, isEmpty);
   });
 
   test("Kechki takrorlash faqat bugungi yangi so'zlardan, jadvalni o'zgartirmaydi", () async {
     final app = await makeApp();
-    final s = ReviewStore(app, random: Random(3))..start();
+    final s = ReviewStore(app, kind: SessionKind.learn, random: Random(3))..start();
+    _skipIntros(s);
     for (var i = 0; i < 3; i++) {
-      s.reveal();
-      await s.answerRecognize(true);
+      await s.choose(app.word(s.card!.wordId)!.uz);
+      s.next();
     }
     final ids = app.recapWords.map((w) => w.id).toSet();
     expect(ids.length, 3);
@@ -107,6 +152,7 @@ void main() {
       // Bitta so'z uchun kartochka: qiyin so'zlar seansi orqali.
       await app.setDifficult(w.id!, true);
       final h = ReviewStore(app, kind: SessionKind.hard, random: Random(k))..start();
+      _skipIntros(h);
       seen.add(h.card!.exampleIndex);
       h.dispose();
     }
@@ -114,4 +160,3 @@ void main() {
   });
 }
 
-ReviewCard? _cardAt(ReviewStore s, int i) => s.cardAt(i);

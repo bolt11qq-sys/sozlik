@@ -209,14 +209,35 @@ void main() {
       },
     );
     await shot(tester, app, const ReviewScreen(kind: SessionKind.recap), '18_recap');
+    await shot(tester, app, const ReviewScreen(kind: SessionKind.learn), '19_learn_intro', height: 1100);
+    await shot(
+      tester,
+      app,
+      const ReviewScreen(kind: SessionKind.learn),
+      '20_learn_choice',
+      act: (t) async {
+        for (var i = 0; i < 5; i++) {
+          await t.tap(find.text('Yodladim').last);
+          await t.pump(const Duration(milliseconds: 300));
+          await t.pump(const Duration(milliseconds: 300));
+        }
+      },
+    );
+
     await shot(tester, app, const Shell(), '05_words', act: (t) async => t.tap(find.text("So'zlar").last));
-    await shot(tester, app, const Shell(), '05b_words_select', act: (t) async {
-      await t.tap(find.text("So'zlar").last);
-      await t.pump(const Duration(milliseconds: 400));
-      await t.longPress(find.text('contribute'));
-      await t.pump();
-      await t.tap(find.text('challenge'));
-    });
+    await shot(
+      tester,
+      app,
+      const Shell(),
+      '05b_words_select',
+      act: (t) async {
+        await t.tap(find.text("So'zlar").last);
+        await t.pump(const Duration(milliseconds: 400));
+        await t.longPress(find.text('contribute'));
+        await t.pump();
+        await t.tap(find.text('challenge'));
+      },
+    );
     await shot(tester, app, WordEditScreen(word: words[13]), '06_word_edit', height: 1150);
     await shot(
       tester,

@@ -158,7 +158,7 @@ class _ImportScreenState extends State<ImportScreen> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          "Har qator: so'z :: tarjima :: sinonim :: misol  ·  CSV: en,uz,synonyms,example",
+                          "Har qator: so'z :: tarjima :: sinonim :: misol  ·  yoki: so'z - tarjima  ·  CSV: en,uz,synonyms,example",
                           style: T.text(11, color: c.sec, height: 1.45),
                         ),
                       ],

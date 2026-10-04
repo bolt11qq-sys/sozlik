@@ -123,6 +123,8 @@ class AppStore extends ChangeNotifier {
   Future<void> refreshDay() async {
     if (_statDay != today) {
       await _loadTodayStat();
+      // Kechagi yangi so'zlar bugungi kechki takrorlashga o'tib qolmasin.
+      _newToday = await db.newWordIdsOn(today);
       await db.setLastOpenedDay(today);
       _changed(reschedule: true);
     }
@@ -380,10 +382,29 @@ class AppStore extends ChangeNotifier {
     );
   }
 
-  /// Bugungi rejadagi so'zlar qaysi rejimda chiqishi (Bugun ekranidagi chiplar).
+  /// Bugungi rejadagi takrorlanadigan (tanish) so'zlar.
+  List<int> get reviewIds => [
+    for (final id in plan.ids)
+      if (!(_words[id]?.isNew ?? true)) id,
+  ];
+
+  /// Bugun o'rganiladigan yangi so'zlar (kunlik chegara ichida, qo'shilish tartibida).
+  List<int> get freshIds {
+    final list =
+        [
+          for (final id in plan.ids)
+            if (_words[id]?.isNew ?? false) _words[id]!,
+        ]..sort((a, b) {
+          final c = a.createdAt.compareTo(b.createdAt);
+          return c != 0 ? c : a.id!.compareTo(b.id!);
+        });
+    return [for (final w in list) w.id!];
+  }
+
+  /// Bugungi takrorlanadigan so'zlar qaysi rejimda chiqishi (Bugun ekranidagi chiplar).
   Map<ReviewMode, int> get planModes {
     final out = {for (final m in ReviewMode.values) m: 0};
-    for (final id in plan.ids) {
+    for (final id in reviewIds) {
       final w = _words[id];
       if (w == null) continue;
       out[modeFor(w)] = out[modeFor(w)]! + 1;
@@ -468,7 +489,7 @@ class AppStore extends ChangeNotifier {
 
   /// Bugun boshlangan yangi so'zlar (hali faol).
   List<Word> get recapWords => [
-    for (final id in _newToday)
+    for (final id in (_statDay == today ? _newToday : const <int>{}))
       if (_words[id] != null && !_words[id]!.isArchived) _words[id]!,
   ];
 

@@ -2,6 +2,7 @@
 //
 // Format: `so'z :: tarjima :: sinonimlar :: misol` (oxirgi ikkitasi ixtiyoriy).
 // CSV ham qo'llab-quvvatlanadi: `en,uz,synonyms,example` (tab va `;` ham).
+// Oddiy ro'yxat ham: `so'z - tarjima` (tire, `–`, `—` yoki `=`).
 
 import '../models/word.dart';
 
@@ -50,6 +51,10 @@ class ImportPreview {
 
 final _letter = RegExp(r'[A-Za-z]');
 
+/// `abandon - tashlab ketmoq, voz kechmoq`: chap tomonda vergul bo'lmasa,
+/// birinchi tire (yoki `=`) so'zni tarjimadan ajratadi.
+final _dashLine = RegExp(r'^([^,;\t]+?)\s+[-–—=]\s+(.+)$');
+
 ImportPreview parseImport(String text, Set<String> existingKeys) {
   final fresh = <ImportEntry>[];
   final dups = <ImportEntry>[];
@@ -70,10 +75,13 @@ ImportPreview parseImport(String text, Set<String> existingKeys) {
         errors.add(ImportError(i + 1, line, "Ortiqcha '::' — 4 tadan ko'p qism"));
         continue;
       }
+    } else if (!line.contains('	') && _dashLine.hasMatch(line)) {
+      final m = _dashLine.firstMatch(line)!;
+      parts = [m.group(1)!.trim(), m.group(2)!.trim()];
     } else {
       final delim = _detectDelimiter(line);
       if (delim == null) {
-        errors.add(ImportError(i + 1, line, "Ajratuvchi topilmadi (:: yoki vergul)"));
+        errors.add(ImportError(i + 1, line, "Ajratuvchi topilmadi (::, tire yoki vergul)"));
         continue;
       }
       final all = parseCsvLine(line.replaceFirst('﻿', ''), delim).map((e) => e.trim()).toList();

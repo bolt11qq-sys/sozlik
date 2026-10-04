@@ -20,6 +20,10 @@ enum SessionKind {
 
   /// Kechki takrorlash: bugun boshlangan yangi so'zlar — jadvalni o'zgartirmaydi.
   recap,
+
+  /// Yangi so'zlarni o'rganish: 5 tadan guruh — avval yodlash kartochkalari,
+  /// keyin shu guruh bo'yicha test (tarjimani tanlash → inglizchasini yozish).
+  learn,
 }
 
 enum CardPhase { question, revealed, answered }
@@ -36,6 +40,8 @@ class ReviewCard {
     this.seed = 0,
     this.exampleIndex = 0,
     this.typed = false,
+    this.intro = false,
+    this.choice = false,
   });
 
   final int wordId;
@@ -49,6 +55,12 @@ class ReviewCard {
 
   /// Sinonim rejimi: `true` — sinonimlarni yozib eslash, `false` — tanlash.
   final bool typed;
+
+  /// Tanishish kartochkasi: yangi so'z testdan oldin to'liq ko'rsatiladi (javobsiz).
+  final bool intro;
+
+  /// Tanlov testi: inglizcha so'z → to'g'ri tarjimani to'rt variantdan tanlash.
+  final bool choice;
 
   /// Variantlar tartibi: to'g'ri javob [seed] bo'yicha joylashadi.
   List<String> options(String correct) {
@@ -92,16 +104,24 @@ class ReviewStore extends ChangeNotifier {
   static const undoWindow = Duration(seconds: 10);
   static const _maxRepeats = 2;
 
-  /// Yangi so'z to'g'ri topilsa, shuncha kartochkadan keyin yana chiqadi
-  /// (o'sha kuni qayta ko'rish — yangi so'z eng tez birinchi soatlarda unutiladi).
-  static const learningGap = 6;
+  /// Yangi so'z tanishtirilgach, birinchi testi shuncha kartochkadan keyin chiqadi.
+  static const introGap = 3;
+
+  /// O'rganish seansida bir guruhdagi so'zlar soni.
+  static const learnBatch = 5;
+
+  /// O'rganish seansida standart so'zlar soni (ikki guruh).
+  static const learnSession = 10;
 
   List<ReviewCard> _queue = [];
   int _index = 0;
   int correctCount = 0;
   int wrongCount = 0;
+
+  /// Seansda tanishilgan yangi so'zlar (ortga qaytarishda ikki marta sanalmasin).
+  final Set<int> _introduced = {};
+  int get introducedCount => _introduced.length;
   final Map<int, int> _repeats = {};
-  final Set<int> _learningShown = {};
   bool _busy = false;
 
   CardPhase phase = CardPhase.question;
@@ -137,7 +157,8 @@ class ReviewStore extends ChangeNotifier {
     SessionKind.hard => "Qiyin so'zlar",
     SessionKind.tag => tag ?? 'Teg',
     SessionKind.recap => 'Kechki takrorlash',
-    SessionKind.daily => card?.mode.label ?? 'Takrorlash',
+    SessionKind.learn => "Yangi so'zlar",
+    SessionKind.daily => card?.intro == true ? "Yangi so'z" : card?.mode.label ?? 'Takrorlash',
   };
 
   // ───────────── seansni tuzish ─────────────
@@ -145,8 +166,10 @@ class ReviewStore extends ChangeNotifier {
   void start() {
     final ids = switch (kind) {
       // Rejim chipi bosilgan bo'lsa — faqat bugun shu rejimda chiqadigan so'zlar.
+      // Kunlik takrorlash — faqat tanish so'zlar; yangilari "O'rganish" bo'limida.
       SessionKind.daily =>
-        forceMode == null ? app.plan.ids : app.plan.ids.where((id) => app.modeFor(app.word(id)!) == forceMode).toList(),
+        app.reviewIds.where((id) => forceMode == null || app.modeFor(app.word(id)!) == forceMode).toList(),
+      SessionKind.learn => app.freshIds,
       SessionKind.hard => (app.difficultWords.map((w) => w.id!).toList()..shuffle(_rng)),
       SessionKind.recap => (app.recapWords.map((w) => w.id!).toList()..shuffle(_rng)),
       SessionKind.tag =>
@@ -156,11 +179,101 @@ class ReviewStore extends ChangeNotifier {
             .toList()
           ..shuffle(_rng)),
     };
-    final cap = min(ids.length, limit ?? (kind == SessionKind.daily || kind == SessionKind.recap ? ids.length : 40));
-    _queue = [for (final id in ids.take(cap)) _makeCard(id, practice: kind != SessionKind.daily)];
+    final cap = min(
+      ids.length,
+      limit ??
+          switch (kind) {
+            SessionKind.daily || SessionKind.recap => ids.length,
+            SessionKind.learn => learnSession,
+            _ => 40,
+          },
+    );
+    _queue = kind == SessionKind.learn
+        ? _learnQueue(ids.take(cap).toList())
+        : _withIntros([for (final id in ids.take(cap)) _makeCard(id, practice: kind != SessionKind.daily)]);
     _index = 0;
     phase = CardPhase.question;
     notifyListeners();
+  }
+
+  /// Har yangi so'z oldiga tanishish kartochkasi qo'yiladi, uning testi esa
+  /// [introGap] kartochkadan keyinga suriladi: avval yodlash, keyin eslash.
+  List<ReviewCard> _withIntros(List<ReviewCard> cards) {
+    final out = <ReviewCard>[];
+    final pending = <(int, ReviewCard)>[];
+    void flush() {
+      while (pending.isNotEmpty && pending.first.$1 <= out.length) {
+        out.add(pending.removeAt(0).$2);
+      }
+    }
+
+    for (final card in cards) {
+      flush();
+      if (app.word(card.wordId)?.isNew ?? false) {
+        out.add(ReviewCard(wordId: card.wordId, mode: ReviewMode.recognize, practice: true, intro: true));
+        pending.add((out.length + introGap, card));
+      } else {
+        out.add(card);
+      }
+    }
+    out.addAll(pending.map((p) => p.$2));
+    return out;
+  }
+
+  /// O'rganish navbati: har guruh uchun yodlash → tanlov testi → yozish testi.
+  /// So'zning birinchi tanlov javobi jadvalga yoziladi (yangi so'z ertaga qaytadi),
+  /// qolganlari — mashq.
+  List<ReviewCard> _learnQueue(List<int> ids) {
+    final out = <ReviewCard>[];
+    for (var i = 0; i < ids.length; i += learnBatch) {
+      final group = ids.sublist(i, min(i + learnBatch, ids.length));
+      out.addAll([
+        for (final id in group) ReviewCard(wordId: id, mode: ReviewMode.recognize, practice: true, intro: true),
+      ]);
+      out.addAll([for (final id in List.of(group)..shuffle(_rng)) _choiceCard(id, practice: false)]);
+      out.addAll([
+        for (final id in List.of(group)..shuffle(_rng)) _makeCard(id, practice: true, mode: ReviewMode.produce),
+      ]);
+    }
+    return out;
+  }
+
+  /// Tarjimani tanlash kartochkasi; variantlar yetmasa — oddiy "Tanish".
+  ReviewCard _choiceCard(int id, {required bool practice}) {
+    final w = app.word(id)!;
+    final distractors = _translationDistractors(w);
+    if (distractors.length < 3) return _makeCard(id, practice: practice, mode: ReviewMode.recognize);
+    return ReviewCard(
+      wordId: id,
+      mode: ReviewMode.recognize,
+      practice: practice,
+      distractors: distractors,
+      seed: _rng.nextInt(1 << 20),
+      exampleIndex: _pickExample(w, needMask: false),
+      choice: true,
+    );
+  }
+
+  /// Uchta boshqa tarjima — avval shu teg/turkumdagi so'zlardan.
+  List<String> _translationDistractors(Word w) {
+    final own = Word.normalizeKey(w.uz);
+    final others = app.allWords.where((o) => o.id != w.id && !_related(w, o)).toList()..shuffle(_rng);
+    int score(Word o) {
+      var s = 0;
+      if (o.pos != null && o.pos == w.pos) s += 2;
+      if (o.tags.any((t) => w.tags.contains(t))) s += 1;
+      return s;
+    }
+
+    others.sort((a, b) => score(b).compareTo(score(a)));
+    final out = <String>[];
+    for (final o in others) {
+      if (out.length == 3) break;
+      final k = Word.normalizeKey(o.uz);
+      if (k == own || out.any((x) => Word.normalizeKey(x) == k)) continue;
+      out.add(o.uz);
+    }
+    return out;
   }
 
   ReviewCard _makeCard(int id, {required bool practice, ReviewMode? mode}) {
@@ -303,9 +416,20 @@ class ReviewStore extends ChangeNotifier {
   /// Sinonim rejimida to'g'ri javob — so'zning sinonimlaridan biri.
   String synonymAnswer(Word w, ReviewCard c) => w.synonyms.isEmpty ? w.en : w.synonyms[c.seed % w.synonyms.length];
 
-  String correctOption(Word w, ReviewCard c) => c.mode == ReviewMode.synonym ? synonymAnswer(w, c) : w.en;
+  String correctOption(Word w, ReviewCard c) => c.choice
+      ? w.uz
+      : c.mode == ReviewMode.synonym
+      ? synonymAnswer(w, c)
+      : w.en;
 
   // ───────────── javoblar ─────────────
+
+  /// Tanishish kartochkasi: "Yodladim" — hech narsa yozilmaydi, keyingisiga o'tiladi.
+  void learned() {
+    if (_busy || card?.intro != true) return;
+    _introduced.add(card!.wordId);
+    _advance();
+  }
 
   /// Tanish rejimi: tarjimani ochish.
   void reveal() {
@@ -391,7 +515,6 @@ class ReviewStore extends ChangeNotifier {
     final snapshotIndex = _index;
     final snapCorrect = correctCount, snapWrong = wrongCount;
     final snapRepeats = Map.of(_repeats);
-    final wasNew = app.word(c.wordId)?.isNew ?? false;
     if (correct) {
       correctCount++;
     } else {
@@ -415,11 +538,12 @@ class ReviewStore extends ChangeNotifier {
       // Xato javob: so'z seans oxiriga yaqin yana chiqadi (jadvalga ta'sirsiz).
       _repeats[c.wordId] = (_repeats[c.wordId] ?? 0) + 1;
       final pos = reinsertIndex(ids, _index + 1, c.wordId, gap: 3);
-      if (pos >= 0) _queue.insert(pos, _makeCard(c.wordId, practice: true, mode: c.mode));
-    } else if (correct && wasNew && !c.practice && _learningShown.add(c.wordId)) {
-      // Yangi so'z: o'sha seansda bir oz keyinroq yana bir marta (o'rganish qadami).
-      final pos = reinsertIndex(ids, _index + 1, c.wordId, gap: learningGap);
-      if (pos >= 0) _queue.insert(pos, _makeCard(c.wordId, practice: true, mode: ReviewMode.recognize));
+      if (pos >= 0) {
+        _queue.insert(
+          pos,
+          c.choice ? _choiceCard(c.wordId, practice: true) : _makeCard(c.wordId, practice: true, mode: c.mode),
+        );
+      }
     }
     final w = app.word(c.wordId);
     suggestMnemonic = !correct && w != null && w.wrongCount >= 3 && !w.hasMnemonic;
@@ -472,7 +596,6 @@ class ReviewStore extends ChangeNotifier {
     chosen = null;
     lastCorrect = null;
     suggestMnemonic = false;
-    _learningShown.remove(u.receipt.previous.id);
     _repeats
       ..clear()
       ..addAll(u.repeats);

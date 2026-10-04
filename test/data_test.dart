@@ -45,6 +45,17 @@ void main() {
       expect(p.duplicates.length, 2);
     });
 
+    test("`so'z - tarjima` ro'yxati ham qabul qilinadi", () {
+      final p = parseImport(
+        'abandon - tashlab ketmoq, voz kechmoq\nvivid – yorqin\ncarry out = bajarmoq\nwell-known - mashhur',
+        {},
+      );
+      expect(p.errors, isEmpty);
+      expect(p.fresh.map((e) => e.en), ['abandon', 'vivid', 'carry out', 'well-known']);
+      expect(p.fresh.first.uz, 'tashlab ketmoq, voz kechmoq');
+      expect(p.fresh.first.synonyms, isEmpty);
+    });
+
     test('Xato qatorlar alohida sanaladi', () {
       final p = parseImport('faqat-bir-so\'z\n :: tarjima\n123 :: raqam\nok :: yaxshi', {});
       expect(p.fresh.length, 1);

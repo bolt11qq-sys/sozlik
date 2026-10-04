@@ -4,7 +4,7 @@ enum ThemePref { system, light, dark }
 
 class AppSettings {
   const AppSettings({
-    this.dailyNew = 30,
+    this.dailyNew = 15,
     this.dailyReview = 60,
     this.modeRecognize = true,
     this.modeProduce = true,
@@ -114,7 +114,7 @@ class AppSettings {
   };
 
   factory AppSettings.fromMap(Map<String, Object?> m) => AppSettings(
-    dailyNew: (m['dailyNew'] as int?) ?? 30,
+    dailyNew: (m['dailyNew'] as int?) ?? 15,
     dailyReview: (m['dailyReview'] as int?) ?? 60,
     modeRecognize: (m['modeRecognize'] as int?) != 0,
     modeProduce: (m['modeProduce'] as int?) != 0,

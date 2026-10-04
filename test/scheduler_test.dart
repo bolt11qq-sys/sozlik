@@ -30,14 +30,17 @@ void main() {
       });
     });
 
-    test("5-bosqichda xato → 4 (0 ga emas)", () {
+    test("5-bosqichda xato → 3 (0 ga emas) va ertaga qaytadi", () {
       final r = applyAnswer(w(1, stage: 5), correct: false, today: today, nowMillis: 0);
-      expect(r.stage, 4);
-      expect(r.stage, isNot(0));
+      expect(r.stage, 3);
+      expect(r.nextDue, '2026-10-05');
     });
 
-    test("6-bosqichda (90 kun) xato → 5, nolga tushmaydi", () {
-      expect(nextStage(6, false), 5);
+    test("6-bosqichda (90 kun) xato → 4, unutilgan so'z 30 kunga surilmaydi", () {
+      expect(nextStage(6, false), 4);
+      final r = applyAnswer(w(1, stage: 6), correct: false, today: today, nowMillis: 0);
+      expect(r.nextDue, '2026-10-05');
+      expect(r.intervalDays, 1);
     });
 
     test("2-bosqichda xato → 1 va ertaga qaytadi", () {

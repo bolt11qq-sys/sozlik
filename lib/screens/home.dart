@@ -74,6 +74,10 @@ class HomeScreen extends StatelessWidget {
                 ),
               ] else ...[
                 const _Hero(),
+                if (app.freshIds.isNotEmpty && app.reviewIds.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  const _LearnCard(),
+                ],
                 const SizedBox(height: 16),
                 const _ModeChips(),
                 if (app.recapDue) ...[const SizedBox(height: 16), const _RecapCard()],
@@ -189,6 +193,9 @@ class _Hero extends StatelessWidget {
     final done = app.doneToday;
     final total = done + plan.total;
     final finished = plan.total == 0;
+    final reviews = app.reviewIds.length;
+    // Takrorlash qolmagan, faqat yangi so'zlar — karta o'rganishga chaqiradi.
+    final learnOnly = !finished && reviews == 0;
     // Yorug' mavzuda — to'liq rangli karta (maket B), qorong'ida — to'q karta
     // va rangli tugma (maket D).
     final dark = c.isDark;
@@ -216,12 +223,16 @@ class _Hero extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      finished ? 'Bugungi reja bajarildi' : 'Bugun takrorlash kerak',
+                      finished
+                          ? 'Bugungi reja bajarildi'
+                          : learnOnly
+                          ? "Bugun o'rganiladigan yangi so'zlar"
+                          : 'Bugun takrorlash kerak',
                       style: T.text(13, color: soft),
                     ),
                     const SizedBox(height: 4),
                     TweenAnimationBuilder<double>(
-                      tween: Tween(end: plan.reviews.toDouble()),
+                      tween: Tween(end: (learnOnly ? plan.fresh : reviews).toDouble()),
                       duration: const Duration(milliseconds: 500),
                       curve: Curves.easeOutCubic,
                       builder: (_, v, _) => Text(
@@ -232,7 +243,7 @@ class _Hero extends StatelessWidget {
                   ],
                 ),
               ),
-              if (plan.fresh > 0 || finished)
+              if ((plan.fresh > 0 && !learnOnly) || finished)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
@@ -258,7 +269,10 @@ class _Hero extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('$done / $total bajarildi', style: T.text(12, color: soft)),
-              Text(finished ? 'kun yopildi' : '~${estimateMinutes(plan.total)} daqiqa', style: T.text(12, color: soft)),
+              Text(
+                finished ? 'kun yopildi' : '~${estimateMinutes(reviews + plan.fresh * 3)} daqiqa',
+                style: T.text(12, color: soft),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -270,6 +284,8 @@ class _Hero extends StatelessWidget {
                 ? (app.difficultCount > 0
                       ? () => push(context, const HardScreen())
                       : () => push(context, const WordEditScreen()))
+                : learnOnly
+                ? () => push(context, const ReviewScreen(kind: SessionKind.learn))
                 : () => push(context, const ReviewScreen(kind: SessionKind.daily)),
             child: SizedBox(
               height: 50,
@@ -277,7 +293,11 @@ class _Hero extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   AppIcon(
-                    finished ? (app.difficultCount > 0 ? AppIcons.warning : AppIcons.plus) : AppIcons.play,
+                    finished
+                        ? (app.difficultCount > 0 ? AppIcons.warning : AppIcons.plus)
+                        : learnOnly
+                        ? AppIcons.book
+                        : AppIcons.play,
                     size: 18,
                     color: dark ? c.onAccent : c.accent,
                     stroke: 2,
@@ -286,6 +306,8 @@ class _Hero extends StatelessWidget {
                   Text(
                     finished
                         ? (app.difficultCount > 0 ? "Qiyin so'zlarni mashq qilish" : "Yangi so'z qo'shish")
+                        : learnOnly
+                        ? "O'rganishni boshlash"
                         : (done > 0 ? 'Davom etish' : 'Takrorlashni boshlash'),
                     style: T.text(16, w: FontWeight.w700, color: dark ? c.onAccent : c.accent),
                   ),
@@ -310,7 +332,7 @@ class _ModeChips extends StatelessWidget {
     final c = context.c;
     final counts = app.planModes;
     final modes = ReviewMode.values.where((m) => app.s.isEnabled(m)).toList();
-    final total = app.plan.total;
+    final total = app.reviewIds.length;
     final chips = <Widget>[
       // Vaqt kam bo'lganda: navbatning eng muhim 10 tasi.
       if (total > quick)
@@ -326,7 +348,7 @@ class _ModeChips extends StatelessWidget {
           icon: modeIcon(m),
           color: modeColor(c, m),
           title: m.label,
-          sub: (counts[m] ?? 0) == 0 ? "bugun yo'q" : '${counts[m]} ta · davom etish',
+          sub: (counts[m] ?? 0) == 0 ? "bugun yo'q" : "${counts[m]} ta so'z",
           onTap: (counts[m] ?? 0) == 0 ? null : () => push(context, ReviewScreen(kind: SessionKind.daily, mode: m)),
         ),
     ];
@@ -521,6 +543,46 @@ class _Weekly extends StatelessWidget {
             highlight: days.length - 1,
             height: 52,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Yangi so'zlarni o'rganish: guruhlab yodlash, keyin test.
+class _LearnCard extends StatelessWidget {
+  const _LearnCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final app = context.app;
+    final c = context.c;
+    final n = app.freshIds.length;
+    return AppCard(
+      radius: 18,
+      onTap: () => push(context, const ReviewScreen(kind: SessionKind.learn)),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          IconBox(AppIcons.book, color: c.orange, size: 44, iconSize: 21, radius: 13),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Yangi so'zlarni o'rganish",
+                  style: T.text(15, w: FontWeight.w700, color: c.ink),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  "$n ta · avval yodlash, keyin test",
+                  style: T.text(12.5, color: c.sec),
+                ),
+              ],
+            ),
+          ),
+          AppIcon(AppIcons.chevronRight, size: 18, color: c.sec),
         ],
       ),
     );

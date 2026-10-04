@@ -74,7 +74,7 @@ class AppDatabase {
     batch.execute('''
       CREATE TABLE settings (
         id INTEGER PRIMARY KEY CHECK (id = 1),
-        dailyNew INTEGER NOT NULL DEFAULT 30,
+        dailyNew INTEGER NOT NULL DEFAULT 15,
         dailyReview INTEGER NOT NULL DEFAULT 60,
         modeRecognize INTEGER NOT NULL DEFAULT 1,
         modeProduce INTEGER NOT NULL DEFAULT 1,

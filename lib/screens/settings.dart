@@ -85,7 +85,7 @@ class SettingsScreen extends StatelessWidget {
                     RowItem(
                       leading: IconBox(AppIcons.plus, color: c.accent),
                       title: "Yangi so'zlar",
-                      subtitle: 'Kuniga eng ko\'pi bilan',
+                      subtitle: "Kuniga eng ko'pi bilan · tavsiya 10–20",
                       trailing: chevron('${s.dailyNew}'),
                       onTap: () => _pickNumber(
                         context,
@@ -122,7 +122,7 @@ class SettingsScreen extends StatelessWidget {
                     for (final m in ReviewMode.values)
                       RowItem(
                         leading: IconBox(modeIcon(m), color: modeColor(c, m)),
-                        title: m == ReviewMode.produce ? 'Ishlab chiqarish' : m.label,
+                        title: m.label,
                         subtitle: m.hint,
                         trailing: AppSwitch(
                           label: m.label,
@@ -287,7 +287,7 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     AppLogo(size: 16, color: c.accent),
                     const SizedBox(width: 6),
-                    Text("So'zlik 1.3 · to'liq oflayn, internet ishlatilmaydi", style: T.text(11, color: c.sec)),
+                    Text("So'zlik 1.4 · to'liq oflayn, internet ishlatilmaydi", style: T.text(11, color: c.sec)),
                   ],
                 ),
               ],

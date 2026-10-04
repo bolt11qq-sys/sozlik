@@ -51,6 +51,59 @@ class _WordEditScreenState extends State<WordEditScreen> {
 
   bool get _editing => widget.word != null;
 
+  /// Saqlanmagan o'zgarishlarni aniqlash uchun maydonlar "izi".
+  late String _cleanSig;
+
+  String _sig() => [
+    _en.text.trim(),
+    _uz.text.trim(),
+    _syn.text.trim(),
+    _ex.text.trim(),
+    _exUz.text.trim(),
+    _mnemonic.text.trim(),
+    for (final (a, b) in _extras) '${a.text.trim()}|${b.text.trim()}',
+    _pos ?? '',
+    _tags.join(','),
+    _newAudio != null,
+    _removeAudio,
+  ].join('');
+
+  bool get _dirty => _sig() != _cleanSig;
+
+  @override
+  void initState() {
+    super.initState();
+    _cleanSig = _sig();
+  }
+
+  /// Orqaga: saqlanmagan o'zgarish bo'lsa — tasdiqlash so'raladi.
+  Future<void> _onPop(bool didPop, Object? _) async {
+    if (didPop) return;
+    if (!_dirty) {
+      Navigator.of(context).pop();
+      return;
+    }
+    final c = context.c;
+    final leave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("O'zgarishlar saqlanmadi"),
+        content: const Text("Yozganlaringiz o'chib ketadi. Chiqib ketasizmi?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Qolish', style: TextStyle(color: c.sec)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Chiqish', style: TextStyle(color: c.red)),
+          ),
+        ],
+      ),
+    );
+    if (leave == true && mounted) Navigator.of(context).pop();
+  }
+
   @override
   void dispose() {
     for (final (a, b) in _extras) {
@@ -154,6 +207,7 @@ class _WordEditScreenState extends State<WordEditScreen> {
       _removeAudio = false;
       // Teglar ataylab saqlanadi — bir mavzudagi so'zlarni ketma-ket kiritish uchun.
     });
+    _cleanSig = _sig();
     _enFocus.requestFocus();
     showToast(context, '"$en" saqlandi');
   }
@@ -286,258 +340,275 @@ class _WordEditScreenState extends State<WordEditScreen> {
   Widget build(BuildContext context) {
     final app = context.app;
     final c = context.c;
-    return Scaffold(
-      backgroundColor: c.bg,
-      body: SafeArea(
-        child: ListenableBuilder(
-          listenable: Listenable.merge([_en, _uz, _ex]),
-          builder: (context, _) {
-            final enErr = _enError(app);
-            final uzErr = _showErrors && _uz.text.trim().isEmpty ? 'Tarjimani yozing' : null;
-            final masked = _ex.text.trim().isEmpty ? null : maskExample(_ex.text, _en.text);
-            return Column(
-              children: [
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-                    keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                    children: [
-                      TopBar(
-                        title: _editing
-                            ? 'Tahrirlash'
-                            : (_added > 0 ? "Yangi so'z · $_added ta qo'shildi" : "Yangi so'z"),
-                        onBack: () => Navigator.of(context).maybePop(),
-                        trailing: _editing
-                            ? SquareButton(AppIcons.trash, label: "O'chirish", iconColor: c.red, onTap: _delete)
-                            : SquareButton(
-                                AppIcons.download,
-                                label: 'Import',
-                                onTap: () =>
-                                    Navigator.of(context)
-                                        .pushReplacement(MaterialPageRoute(builder: (_) => const ImportScreen())),
-                              ),
-                      ),
-                      const SizedBox(height: 16),
-                      _Labeled(
-                        'Inglizcha',
-                        error: enErr,
-                        child: _Field(
-                          controller: _en,
-                          focusNode: _enFocus,
-                          autofocus: !_editing && widget.initialEn == null,
-                          hint: 'compulsory',
-                          latin: true,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: _onPop,
+      child: Scaffold(
+        backgroundColor: c.bg,
+        body: SafeArea(
+          child: ListenableBuilder(
+            listenable: Listenable.merge([_en, _uz, _ex]),
+            builder: (context, _) {
+              final enErr = _enError(app);
+              final uzErr = _showErrors && _uz.text.trim().isEmpty ? 'Tarjimani yozing' : null;
+              final masked = _ex.text.trim().isEmpty ? null : maskExample(_ex.text, _en.text);
+              return Column(
+                children: [
+                  Expanded(
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                      children: [
+                        TopBar(
+                          title: _editing
+                              ? 'Tahrirlash'
+                              : (_added > 0 ? "Yangi so'z · $_added ta qo'shildi" : "Yangi so'z"),
+                          onBack: () => Navigator.of(context).maybePop(),
+                          trailing: _editing
+                              ? SquareButton(AppIcons.trash, label: "O'chirish", iconColor: c.red, onTap: _delete)
+                              : SquareButton(
+                                  AppIcons.download,
+                                  label: 'Import',
+                                  onTap: () =>
+                                      Navigator.of(context)
+                                          .pushReplacement(MaterialPageRoute(builder: (_) => const ImportScreen())),
+                                ),
                         ),
-                      ),
-                      _Labeled(
-                        "O'zbekcha",
-                        error: uzErr,
-                        child: _Field(controller: _uz, hint: 'majburiy'),
-                      ),
-                      _Labeled(
-                        'Sinonimlar',
-                        child: _Field(controller: _syn, hint: 'vergul bilan: mandatory, required', latin: true),
-                      ),
-                      _Labeled(
-                        'Misol gap',
-                        error: _ex.text.trim().isNotEmpty && _en.text.trim().isNotEmpty && masked == null
-                            ? "Misolda so'z topilmadi — audio rejimida ishlatilmaydi"
-                            : null,
-                        warn: true,
-                        child: _Field(
-                          controller: _ex,
-                          hint: 'Education is compulsory for children until the age of 16.',
-                          lines: 3,
-                          latin: true,
-                        ),
-                      ),
-                      _Labeled(
-                        'Misol tarjimasi (ixtiyoriy)',
-                        child: _Field(controller: _exUz, hint: "Ta'lim 16 yoshgacha majburiy.", lines: 2),
-                      ),
-                      for (var i = 0; i < _extras.length; i++)
+                        const SizedBox(height: 16),
                         _Labeled(
-                          'Qo\'shimcha misol ${i + 2}',
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              _Field(controller: _extras[i].$1, hint: 'Boshqa vaziyatdagi gap…', lines: 2, latin: true),
-                              const SizedBox(height: 8),
-                              Row(
+                          'Inglizcha',
+                          error: enErr,
+                          child: _Field(
+                            controller: _en,
+                            focusNode: _enFocus,
+                            autofocus: !_editing && widget.initialEn == null,
+                            hint: 'compulsory',
+                            latin: true,
+                          ),
+                        ),
+                        _Labeled(
+                          "O'zbekcha",
+                          error: uzErr,
+                          child: _Field(controller: _uz, hint: 'majburiy'),
+                        ),
+                        _Labeled(
+                          'Sinonimlar',
+                          child: _Field(controller: _syn, hint: 'vergul bilan: mandatory, required', latin: true),
+                        ),
+                        _Labeled(
+                          'Misol gap',
+                          error: _ex.text.trim().isNotEmpty && _en.text.trim().isNotEmpty && masked == null
+                              ? "Misolda so'z topilmadi — audio rejimida ishlatilmaydi"
+                              : null,
+                          warn: true,
+                          child: _Field(
+                            controller: _ex,
+                            hint: 'Education is compulsory for children until the age of 16.',
+                            lines: 3,
+                            latin: true,
+                          ),
+                        ),
+                        _Labeled(
+                          'Misol tarjimasi (ixtiyoriy)',
+                          child: _Field(controller: _exUz, hint: "Ta'lim 16 yoshgacha majburiy.", lines: 2),
+                        ),
+                        for (var i = 0; i < _extras.length; i++)
+                          _Labeled(
+                            'Qo\'shimcha misol ${i + 2}',
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _Field(
+                                  controller: _extras[i].$1,
+                                  hint: 'Boshqa vaziyatdagi gap…',
+                                  lines: 2,
+                                  latin: true,
+                                ),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _Field(controller: _extras[i].$2, hint: 'tarjimasi (ixtiyoriy)'),
+                                    ),
+                                    IconButton(
+                                      tooltip: "Misolni o'chirish",
+                                      onPressed: () => setState(() {
+                                        final (a, b) = _extras.removeAt(i);
+                                        a.dispose();
+                                        b.dispose();
+                                      }),
+                                      icon: AppIcon(AppIcons.trash, size: 18, color: c.red),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        if (_extras.length < 4)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 16),
+                            child: Pressable(
+                              onTap: () =>
+                                  setState(() => _extras.add((TextEditingController(), TextEditingController()))),
+                              radius: 14,
+                              border: Border.all(color: c.dashed),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              child: Row(
                                 children: [
+                                  AppIcon(AppIcons.plus, size: 18, color: c.accent),
+                                  const SizedBox(width: 10),
                                   Expanded(
-                                    child: _Field(controller: _extras[i].$2, hint: 'tarjimasi (ixtiyoriy)'),
+                                    child: Text(
+                                      "Yana misol qo'shish — har takrorlashda boshqasi chiqadi",
+                                      style: T.text(13, color: c.sec),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        _Labeled(
+                          "So'z turkumi",
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final e in kPosLabels.entries)
+                                _OutlineChip(
+                                  label: e.value,
+                                  selected: _pos == e.key,
+                                  onTap: () => setState(() => _pos = _pos == e.key ? null : e.key),
+                                ),
+                            ],
+                          ),
+                        ),
+                        _Labeled(
+                          'Teglar',
+                          child: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              for (final t in _tags)
+                                _OutlineChip(
+                                  label: t,
+                                  selected: true,
+                                  trailing: AppIcons.close,
+                                  onTap: () => setState(() => _tags = _tags.where((x) => x != t).toList()),
+                                ),
+                              Pressable(
+                                onTap: _addTag,
+                                radius: 999,
+                                border: Border.all(color: c.dashed),
+                                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                                child: Text('+ teg', style: T.text(13, color: c.sec)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _Labeled(
+                          "Eslatma (o'z bog'lanishingiz, ixtiyoriy)",
+                          child: _Field(
+                            controller: _mnemonic,
+                            hint: 'masalan: reluctant — "re-lak": lak surishni istamaydi',
+                            lines: 2,
+                          ),
+                        ),
+                        _Labeled(
+                          'Talaffuz (audio fayl)',
+                          child: AppCard(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            onTap: _hasAudio ? _playAudio : _pickAudio,
+                            child: Row(
+                              children: [
+                                IconBox(_hasAudio ? AppIcons.speaker : AppIcons.upload, color: c.accent),
+                                const SizedBox(width: 11),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _hasAudio ? 'Sizning talaffuzingiz' : 'Fayl yuklash',
+                                        style: T.text(14, w: FontWeight.w600, color: c.ink),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        _newAudio != null
+                                            ? '$_newAudioName · tinglash uchun bosing'
+                                            : _hasAudio
+                                            ? 'Tinglash uchun bosing'
+                                            : "mp3, m4a, wav… Yo'q bo'lsa, telefon ovozi o'qiydi",
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: T.text(12, color: c.sec),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (_hasAudio) ...[
+                                  IconButton(
+                                    tooltip: 'Almashtirish',
+                                    onPressed: _pickAudio,
+                                    icon: AppIcon(AppIcons.upload, size: 18, color: c.sec),
                                   ),
                                   IconButton(
-                                    tooltip: "Misolni o'chirish",
+                                    tooltip: "Faylni o'chirish",
                                     onPressed: () => setState(() {
-                                      final (a, b) = _extras.removeAt(i);
-                                      a.dispose();
-                                      b.dispose();
+                                      _newAudio = null;
+                                      _newAudioName = null;
+                                      _removeAudio = true;
                                     }),
                                     icon: AppIcon(AppIcons.trash, size: 18, color: c.red),
                                   ),
                                 ],
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      if (_extras.length < 4)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Pressable(
-                            onTap: () =>
-                                setState(() => _extras.add((TextEditingController(), TextEditingController()))),
-                            radius: 14,
-                            border: Border.all(color: c.dashed),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        if (_ex.text.trim().isNotEmpty)
+                          AppCard(
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                            onTap: () => Tts.instance.speak(_ex.text),
                             child: Row(
                               children: [
-                                AppIcon(AppIcons.plus, size: 18, color: c.accent),
-                                const SizedBox(width: 10),
+                                IconBox(AppIcons.message, color: c.violet),
+                                const SizedBox(width: 11),
                                 Expanded(
                                   child: Text(
-                                    "Yana misol qo'shish — har takrorlashda boshqasi chiqadi",
+                                    "Misol gap telefon ovozida o'qiladi — tinglash",
                                     style: T.text(13, color: c.sec),
                                   ),
                                 ),
+                                AppIcon(AppIcons.speaker, size: 18, color: c.violet),
                               ],
                             ),
                           ),
-                        ),
-                      _Labeled(
-                        "So'z turkumi",
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final e in kPosLabels.entries)
-                              _OutlineChip(
-                                label: e.value,
-                                selected: _pos == e.key,
-                                onTap: () => setState(() => _pos = _pos == e.key ? null : e.key),
-                              ),
-                          ],
-                        ),
-                      ),
-                      _Labeled(
-                        'Teglar',
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            for (final t in _tags)
-                              _OutlineChip(
-                                label: t,
-                                selected: true,
-                                trailing: AppIcons.close,
-                                onTap: () => setState(() => _tags = _tags.where((x) => x != t).toList()),
-                              ),
-                            Pressable(
-                              onTap: _addTag,
-                              radius: 999,
-                              border: Border.all(color: c.dashed),
-                              padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                              child: Text('+ teg', style: T.text(13, color: c.sec)),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _Labeled(
-                        "Eslatma (o'z bog'lanishingiz, ixtiyoriy)",
-                        child: _Field(
-                          controller: _mnemonic,
-                          hint: 'masalan: reluctant — "re-lak": lak surishni istamaydi',
-                          lines: 2,
-                        ),
-                      ),
-                      _Labeled(
-                        'Talaffuz (audio fayl)',
-                        child: AppCard(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          onTap: _hasAudio ? _playAudio : _pickAudio,
-                          child: Row(
-                            children: [
-                              IconBox(_hasAudio ? AppIcons.speaker : AppIcons.upload, color: c.accent),
-                              const SizedBox(width: 11),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _hasAudio ? 'Sizning talaffuzingiz' : 'Fayl yuklash',
-                                      style: T.text(14, w: FontWeight.w600, color: c.ink),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      _newAudio != null
-                                          ? '$_newAudioName · tinglash uchun bosing'
-                                          : _hasAudio
-                                          ? 'Tinglash uchun bosing'
-                                          : "mp3, m4a, wav… Yo'q bo'lsa, telefon ovozi o'qiydi",
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: T.text(12, color: c.sec),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (_hasAudio) ...[
-                                IconButton(
-                                  tooltip: 'Almashtirish',
-                                  onPressed: _pickAudio,
-                                  icon: AppIcon(AppIcons.upload, size: 18, color: c.sec),
-                                ),
-                                IconButton(
-                                  tooltip: "Faylni o'chirish",
-                                  onPressed: () => setState(() {
-                                    _newAudio = null;
-                                    _newAudioName = null;
-                                    _removeAudio = true;
-                                  }),
-                                  icon: AppIcon(AppIcons.trash, size: 18, color: c.red),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                      if (_ex.text.trim().isNotEmpty)
-                        AppCard(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                          onTap: () => Tts.instance.speak(_ex.text),
-                          child: Row(
-                            children: [
-                              IconBox(AppIcons.message, color: c.violet),
-                              const SizedBox(width: 11),
-                              Expanded(
-                                child: Text(
-                                  "Misol gap telefon ovozida o'qiladi — tinglash",
-                                  style: T.text(13, color: c.sec),
-                                ),
-                              ),
-                              AppIcon(AppIcons.speaker, size: 18, color: c.violet),
-                            ],
-                          ),
+                      ],
+                    ),
+                  ),
+                  BottomBar(
+                    children: [
+                      if (_editing)
+                        BigButton(
+                          label: 'Bekor qilish',
+                          kind: ButtonKind.secondary,
+                          onTap: () => Navigator.pop(context),
+                        )
+                      else
+                        BigButton(label: 'Saqlash', kind: ButtonKind.secondary, onTap: _saving ? null : _saveAndClose),
+                      if (_editing)
+                        BigButton(label: 'Saqlash', icon: AppIcons.check, onTap: _saving ? null : _saveAndClose)
+                      else
+                        BigButton(
+                          label: 'Saqlab, keyingisi',
+                          icon: AppIcons.plus,
+                          onTap: _saving ? null : _saveAndNext,
                         ),
                     ],
                   ),
-                ),
-                BottomBar(
-                  children: [
-                    if (_editing)
-                      BigButton(label: 'Bekor qilish', kind: ButtonKind.secondary, onTap: () => Navigator.pop(context))
-                    else
-                      BigButton(label: 'Saqlash', kind: ButtonKind.secondary, onTap: _saving ? null : _saveAndClose),
-                    if (_editing)
-                      BigButton(label: 'Saqlash', icon: AppIcons.check, onTap: _saving ? null : _saveAndClose)
-                    else
-                      BigButton(label: 'Saqlab, keyingisi', icon: AppIcons.plus, onTap: _saving ? null : _saveAndNext),
-                  ],
-                ),
-              ],
-            );
-          },
+                ],
+              );
+            },
+          ),
         ),
       ),
     );

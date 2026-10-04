@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -141,6 +142,12 @@ class _Header extends StatelessWidget {
     final card = s.card;
     final label = s.finished || card == null
         ? (s.kind == SessionKind.daily ? 'Takrorlash' : s.title)
+        : card.intro
+        ? "Yangi so'z · avval yodlab oling"
+        : card.choice
+        ? 'Test · tarjimasini tanlang'
+        : s.kind == SessionKind.learn && card.mode == ReviewMode.produce
+        ? 'Test · inglizchasini yozing'
         : [
             if (s.kind == SessionKind.hard) "Qiyin so'zlar",
             if (s.kind == SessionKind.tag) '#${s.tag}',
@@ -218,6 +225,10 @@ class _CardViewState extends State<_CardView> {
   final _input = TextEditingController();
   final _focus = FocusNode();
 
+  /// Audio rejimi: gap matni faqat javobdan keyin yoki so'ralganda ko'rinadi —
+  /// aks holda so'zni eshitmasdan, o'qib topish mumkin bo'lardi.
+  bool _showText = false;
+
   ReviewStore get s => widget.store;
   Word get w => widget.word;
   ReviewMode get mode => widget.card.mode;
@@ -262,16 +273,22 @@ class _CardViewState extends State<_CardView> {
   Widget build(BuildContext context) {
     final c = context.c;
     final answered = s.phase == CardPhase.answered;
-    final body = switch (mode) {
-      ReviewMode.recognize => _recognize(c),
-      ReviewMode.produce => _produce(c),
-      ReviewMode.audio => _audio(c),
-      ReviewMode.synonym => _typedSyn ? _synonymTyped(c) : _synonym(c),
-      ReviewMode.cloze => _cloze(c),
-    };
+    final body = widget.card.choice
+        ? _choice(c)
+        : widget.card.intro
+        ? _intro(c)
+        : switch (mode) {
+            ReviewMode.recognize => _recognize(c),
+            ReviewMode.produce => _produce(c),
+            ReviewMode.audio => _audio(c),
+            ReviewMode.synonym => _typedSyn ? _synonymTyped(c) : _synonym(c),
+            ReviewMode.cloze => _cloze(c),
+          };
 
     final List<Widget> buttons;
-    if (answered) {
+    if (widget.card.intro) {
+      buttons = [BigButton(label: 'Yodladim', icon: AppIcons.check, height: 54, onTap: s.learned)];
+    } else if (answered) {
       buttons = [
         BigButton(
           label: s.index + 1 >= s.total ? 'Yakunlash' : 'Davom etish',
@@ -280,7 +297,7 @@ class _CardViewState extends State<_CardView> {
           onTap: s.next,
         ),
       ];
-    } else if (mode == ReviewMode.recognize) {
+    } else if (mode == ReviewMode.recognize && !widget.card.choice) {
       final revealed = s.phase == CardPhase.revealed;
       buttons = [
         BigButton(
@@ -476,6 +493,92 @@ class _CardViewState extends State<_CardView> {
     ),
   ];
 
+  // ───── Tarjimani tanlash (o'rganish testi) ─────
+
+  List<Widget> _choice(AppColors c) {
+    final answered = s.phase == CardPhase.answered;
+    return [
+      ..._section(c, [
+        _cardTop(c, 'Tarjimasini tanlang'),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                w.en,
+                style: T.text(32, w: FontWeight.w700, color: c.ink, spacing: -0.5, height: 1.15),
+              ),
+            ),
+            SpeakButton.word(w, size: 20),
+          ],
+        ),
+        if (w.pos != null) Text(kPosLabels[w.pos] ?? w.pos!, style: T.text(13, color: c.sec)),
+        if (answered) ...[_divider(c), _exampleBox(c), _mnemonic(c)],
+      ]),
+      const SizedBox(height: 16),
+      _Options(store: s, card: widget.card, correct: s.correctOption(w, widget.card)),
+      if (s.suggestMnemonic) ...[const SizedBox(height: 4), _mnemonicPrompt(c)],
+    ];
+  }
+
+  // ───── Tanishish (yangi so'z) ─────
+
+  List<Widget> _intro(AppColors c) {
+    final examples = w.examples;
+    return [
+      ..._section(c, [
+        _cardTop(c, "Yangi so'z"),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                w.en,
+                style: T.text(32, w: FontWeight.w700, color: c.ink, spacing: -0.5, height: 1.15),
+              ),
+            ),
+            SpeakButton.word(w, size: 20),
+          ],
+        ),
+        if (w.pos != null) Text(kPosLabels[w.pos] ?? w.pos!, style: T.text(13, color: c.sec)),
+        _divider(c),
+        Text('TARJIMA', style: T.caps(c.sec)),
+        Text(
+          w.uz,
+          style: T.text(20, w: FontWeight.w700, color: c.accent),
+        ),
+        if (w.synonyms.isNotEmpty)
+          Text('Sinonim: ${w.synonyms.join(', ')}', style: T.text(13, color: c.sec, height: 1.5)),
+        for (final e in examples)
+          Container(
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(color: c.bg, borderRadius: BorderRadius.circular(14)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ExampleText(example: e.en, word: w.en),
+                if ((e.uz ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 9),
+                  Text(e.uz!, style: T.text(12, color: c.sec, height: 1.45)),
+                ],
+                const SizedBox(height: 9),
+                _ListenRow(text: e.en),
+              ],
+            ),
+          ),
+        if (examples.isEmpty) _exampleBox(c),
+        _mnemonic(c),
+        _sentences(c),
+      ]),
+      Padding(
+        padding: const EdgeInsets.only(top: 14),
+        child: Text(
+          "Diqqat bilan o'qing va talaffuzni eshiting. Bir necha kartochkadan keyin shu so'z bo'yicha savol beriladi.",
+          textAlign: TextAlign.center,
+          style: T.text(12, color: c.sec, height: 1.45),
+        ),
+      ),
+    ];
+  }
+
   // ───── Tanish ─────
 
   List<Widget> _recognize(AppColors c) {
@@ -670,7 +773,17 @@ class _CardViewState extends State<_CardView> {
           ],
         ),
         _divider(c),
-        if (masked != null)
+        if (masked != null && !answered && !_showText && Tts.instance.available)
+          Center(
+            child: TextButton(
+              onPressed: () => setState(() => _showText = true),
+              child: Text(
+                "Eshitilmayaptimi? Matnni ko'rsatish",
+                style: T.text(13, w: FontWeight.w600, color: c.accent),
+              ),
+            ),
+          )
+        else if (masked != null)
           Text.rich(
             TextSpan(
               style: T.text(14, color: c.sec, height: 1.75),
@@ -961,16 +1074,16 @@ class _Options extends StatelessWidget {
                   color: bg ?? c.card,
                   radius: 15,
                   border: Border.all(color: border, width: answered && (isCorrect || isChosen) ? 1.6 : 1),
-                  child: SizedBox(
-                    height: 54,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 54),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                       child: Row(
                         children: [
                           Expanded(
                             child: Text(
                               o,
-                              maxLines: 1,
+                              maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: T.text(
                                 16,
@@ -1196,6 +1309,11 @@ class _NothingToReview extends StatelessWidget {
       SessionKind.hard => ("Qiyin so'z yo'q", "3 marta xato qilingan so'zlar shu yerga avtomatik tushadi."),
       SessionKind.tag => ("Bu tegda so'z yo'q", "Boshqa tegni tanlang."),
       SessionKind.recap => ("Bugun yangi so'z yo'q", "Kechki takrorlash bugun boshlangan so'zlar uchun."),
+      SessionKind.learn => (
+        "O'rganiladigan so'z yo'q",
+        "Bugungi yangi so'zlar chegarasi bajarilgan yoki lug'atda yangi so'z qolmagan. "
+            "Yangi so'z qo'shing yoki Sozlamalarda kunlik chegarani oshiring.",
+      ),
     };
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -1222,9 +1340,12 @@ class _Summary extends StatelessWidget {
     final app = store.app;
     final total = store.correctCount + store.wrongCount;
     final pct = total == 0 ? 0 : (store.correctCount * 100 / total).round();
-    final left = app.plan.total;
+    final left = app.reviewIds.length;
+    final fresh = app.freshIds.length;
     final tomorrow = app.forecast(2).last;
     final daily = store.kind == SessionKind.daily;
+    final learn = store.kind == SessionKind.learn;
+    void open(Widget page) => Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => page));
     return Column(
       children: [
         Expanded(
@@ -1240,11 +1361,24 @@ class _Summary extends StatelessWidget {
                     const SizedBox(height: 14),
                     Text('Seans tugadi', style: T.display(22, color: c.ink)),
                     const SizedBox(height: 6),
+                    if (store.introducedCount > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          "${store.introducedCount} ta yangi so'z bilan tanishdingiz",
+                          textAlign: TextAlign.center,
+                          style: T.text(14, w: FontWeight.w600, color: c.accent),
+                        ),
+                      ),
                     Text(
-                      daily
+                      learn
+                          ? "Bu so'zlar ertaga birinchi marta takrorlanadi — keyin 3, 7, 14 kundan so'ng. "
+                                "Unutmaslik uchun kechqurun «Kechki takrorlash»ni ham qiling."
+                          : daily
                           ? (left == 0
-                                ? "Bugungi reja to'liq bajarildi. Ertaga $tomorrow ta so'z kutadi."
-                                : "Bugun yana $left ta so'z qoldi.")
+                                    ? "Bugungi reja to'liq bajarildi. Ertaga $tomorrow ta so'z kutadi."
+                                    : "Bugun yana $left ta so'z qoldi.") +
+                                (left == 0 && fresh > 0 ? " Endi $fresh ta yangi so'zni o'rganishingiz mumkin." : '')
                           : "Mashq natijalari tarixga yozildi. Takrorlash jadvali o'zgarmadi.",
                       textAlign: TextAlign.center,
                       style: T.text(13, color: c.sec, height: 1.55),
@@ -1273,8 +1407,8 @@ class _Summary extends StatelessWidget {
                 const HintCard(
                   icon: AppIcons.info,
                   text:
-                      "Xato qilingan so'zlar ertaga yoki bir necha kundan keyin qaytadi — bosqichi bittaga tushdi, "
-                      "boshiga qaytmadi.",
+                      "Xato qilingan so'zlar ertaga qaytadi — bosqichi biroz tushdi, lekin boshiga qaytmadi. "
+                      "Shunday qilib unutilgan so'z tezda qayta mustahkamlanadi.",
                 ),
               ],
             ],
@@ -1284,12 +1418,15 @@ class _Summary extends StatelessWidget {
           children: [
             BigButton(label: 'Bosh sahifa', kind: ButtonKind.secondary, onTap: () => Navigator.of(context).pop()),
             if (daily && left > 0)
+              BigButton(label: 'Davom etish', icon: AppIcons.play, onTap: () => open(const ReviewScreen()))
+            else if ((daily || learn) && fresh > 0)
               BigButton(
-                label: 'Davom etish',
+                label: learn ? 'Yana ${min(fresh, ReviewStore.learnSession)} ta' : "Yangi so'zlar",
                 icon: AppIcons.play,
-                onTap: () =>
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const ReviewScreen())),
-              ),
+                onTap: () => open(const ReviewScreen(kind: SessionKind.learn)),
+              )
+            else if (learn && left > 0)
+              BigButton(label: 'Takrorlash', icon: AppIcons.play, onTap: () => open(const ReviewScreen())),
           ],
         ),
       ],

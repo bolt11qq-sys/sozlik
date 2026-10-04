@@ -42,18 +42,17 @@ bool isValidDay(String s) {
 
 int intervalFor(int stage) => kIntervals[stage.clamp(0, kMaxStage)];
 
-/// To'g'ri: +1 (6 dan oshmaydi). Xato: bitta pastga, lekin 1 dan past emas.
-/// `stage ≤ 2` bo'lsa — 1 ga tushadi.
+/// To'g'ri: +1 (6 dan oshmaydi). Xato: ikki pog'ona pastga, lekin 1 dan past emas
+/// (unutilgan so'z uzoq oraliqqa qaytmasligi uchun; bosqich 0 ga ham tushmaydi).
 int nextStage(int stage, bool correct) {
   if (correct) return min(stage + 1, kMaxStage);
-  if (stage <= 2) return 1;
-  return stage - 1;
+  return max(1, stage - 2);
 }
 
 /// Yangi bosqich bo'yicha keyingi takrorlash kuni.
-/// Xato javobda `stage ≤ 2` bo'lsa — ertaga.
+/// Xato javobda — har doim ertaga: unutilgan so'z darhol qayta mustahkamlanadi.
 String nextDue(String today, int newStage, {required bool correct}) {
-  if (!correct && newStage <= 1) return addDays(today, 1);
+  if (!correct) return addDays(today, 1);
   return addDays(today, max(1, intervalFor(newStage)));
 }
 
@@ -63,7 +62,7 @@ Word applyAnswer(Word w, {required bool correct, required String today, required
   final wrongCount = w.wrongCount + (correct ? 0 : 1);
   return w.copyWith(
     stage: stage,
-    intervalDays: max(1, intervalFor(stage)),
+    intervalDays: correct ? max(1, intervalFor(stage)) : 1,
     nextDue: nextDue(today, stage, correct: correct),
     lastSeen: today,
     correctCount: w.correctCount + (correct ? 1 : 0),
